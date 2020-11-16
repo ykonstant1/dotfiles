@@ -1,0 +1,23 @@
+set synctex true
+set synctex-editor-command "vim --remote-silent +%{line} %{input}"
+
+set statusbar-h-padding 10
+set statusbar-v-padding 10
+set statusbar-fg "#000000"
+set statusbar-bg "#FFFFF0"
+set page-padding 1
+set default-bg "#FFFFF0"
+set recolor true
+set recolor-lightcolor "#FFFFF0"
+set recolor-darkcolor "#000000"
+set selection-clipboard clipboard
+set completion-fg "$000000"
+set completion-bg "$FFFDD"
+set inputbar-bg "#FF9300"
+set inputbar-fg "#000000"
+set notification-error-bg "#FFFFF0"
+set notification-bg "#FFFFF0"
+set notification-warning-bg "#FFFFF0"
+set highlight-color "#FFBA00"
+set highlight-active-color "#FFBA99"
+set guioptions ""

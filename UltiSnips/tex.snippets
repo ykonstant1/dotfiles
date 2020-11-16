@@ -1,0 +1,1807 @@
+################################################################################
+##                                                                            ## 
+##                                                                            ##
+##							UltiSnips Snippets for Latex, with commentary                 ##
+##										Author: Ioannis Konstantoulas                           ##
+##                                                                            ##
+##                                                                            ## 
+##                                                                            ##
+################################################################################
+#
+#		Contents
+#		========
+#		
+#			1. Guiding principles
+#			2. Python functions preamble
+#			3. Essential snippets
+#			4. Visual snippets for symbols
+#			5. Parametric snippets for matrices, tables, diagrams etc.
+#			6. Snippets for math environments and vertical structures
+#			7. Snippets for sections, documents and bibliography
+#			8. Tikz snippets (unpolished)
+#
+#		Credits
+#		=======
+#
+#			The inspiration for this document came from honza's master
+#			list of snippets on github; the tex zone specifications
+#			designed to detect math modes came from Gilles Castel who has
+#			a website dedicated to advanced snippet editing.
+#
+#		Disclaimer
+#		==========
+#
+#			This is my snippets file, designed according to principles
+#			that work for me, and facilitate my daily workflow.  There is
+#			no guarantee that what works for me will also work for you.
+#			Treat this document as a collection of suggestions to follow
+#			at your own convenience.
+#
+#		*	Viewing suggestion:	Many of the snippets below involve long
+#			horizontal lines, up to 120 columns.  I have made an effort
+#			to keep most text in the under 80 column length, but I
+#			suggest you use a wide terminal or GUI screen to avoid
+#			wrapping or text vanishing issues.
+#
+################################################################################
+
+
+
+################################################################################
+#											 1. Guiding principles																	 #
+################################################################################
+#
+#		A.	All principles are guidelines.  Feel free to break them if
+#				they become a hindrance.
+#
+#		B.	Automate whatever you can, starting with the most
+#				cognitively tedious tasks that are done most frequently.
+#				These may or may not be the "slowest" tasks.	
+#
+#		C.	Be mindful of composability of snippets: think about how
+#				your snippets will expand while you are in another snippet.
+#
+#		D.	Minimize nuisance navigation: design snippets that place you
+#				where you are supposed to edit text, and guide you to
+#				their exit cleanly.
+#
+#		E.	Eliminate low-level typesetting.  You should not have to
+#				manually open or close an environment, enter a backslash,
+#				open and close command brackets, indent text, and so on.
+#
+#		F.	Use composable visual tokens for latex symbols as much as
+#				possible.  In general, use tokens that trigger your memory
+#				the best.
+#				
+#		G.	Exploit vertical space for long equation groups, and tame
+#				horizontal space.  Use folds to handle the long environments
+#				that may result.
+#				
+################################################################################
+
+
+
+################################################################################
+#											 2. Python functions preamble														 #
+################################################################################
+#
+#				This section initializes all python functions used in the
+#				programmable snippets, and declares the math() context that
+#				some snippets are restricted to.  Feel free to skip.
+#				
+#				Source: most of the code in this section is either verbatim
+#				or adapted from honza's snippets, and from Gilles Castel's
+#				work for the math() context.
+#
+#
+################################################################################
+
+priority -50
+
+global !p
+
+texMathZones = ['texMathZone' + x for x in ['A', 'AS', 'B', 'BS', 'C', 'CS',
+'D', 'DS', 'E', 'ES', 'F', 'FS', 'G', 'GS', 'H', 'HS', 'I', 'IS', 'J', 'JS',
+'K', 'KS', 'L', 'LS', 'DS', 'V', 'W', 'X', 'Y', 'Z', 'AmsA', 'AmsB', 'AmsC',
+'AmsD', 'AmsE', 'AmsF', 'AmsG', 'AmsAS', 'AmsBS', 'AmsCS', 'AmsDS', 'AmsES',
+'AmsFS', 'AmsGS' ]]
+
+texIgnoreMathZones = ['texMathText']
+
+texMathZoneIds = vim.eval('map('+str(texMathZones)+", 'hlID(v:val)')")
+texIgnoreMathZoneIds = vim.eval('map('+str(texIgnoreMathZones)+", 'hlID(v:val)')")
+
+ignore = texIgnoreMathZoneIds[0]
+
+def math():
+	synstackids = vim.eval("synstack(line('.'), col('.') - (col('.')>=2 ? 1 : 0))")
+	try:
+		first = next(i for i in reversed(synstackids) if i in texIgnoreMathZoneIds or i in texMathZoneIds)
+		return first != ignore
+	except StopIteration:
+		return False
+
+def create_table(snip):
+	rows = snip.buffer[snip.line].split('x')[0]
+	cols = snip.buffer[snip.line].split('x')[1]
+
+	int_val = lambda string: int(''.join(s for s in string if s.isdigit()))
+	
+	rows = int_val(rows)
+	cols = int_val(cols)
+
+	offset = cols + 1
+	old_spacing = snip.buffer[snip.line][:snip.buffer[snip.line].rfind('\t') + 1]
+	
+	snip.buffer[snip.line] = ''
+	
+	final_str = old_spacing + "\\begin{tabular}{|" + "|".join(['$' + str(i + 1) for i in range(cols)]) + "|}\n"
+
+	for i in range(rows):
+		final_str += old_spacing + '\t'
+		final_str += " & ".join(['$' + str(i * cols + j + offset) for j in range(cols)])
+
+		final_str += " \\\\\\\n"
+
+	final_str += old_spacing + "\\end{tabular}\n$0"
+
+	snip.expand_anon(final_str)
+
+def create_matrix_n(snip):
+	mac = re.search('(\w)mat(\d+)x(\d+)', snip.buffer[snip.line])
+	mc = mac.group(1)
+	rows = int(mac.group(2))
+	cols = int(mac.group(3))
+
+	offset = cols + 1
+	old_spacing = snip.buffer[snip.line][:snip.buffer[snip.line].rfind('\t') + 1]
+	
+	
+	final_str = snip.buffer[snip.line][0:-len(mac.group(0))] + "\\begin{" + mc + "matrix}\n"
+
+
+	snip.buffer[snip.line] = ''
+	for i in range(rows):
+		final_str += old_spacing + '\t'
+		final_str += " & ".join(['$' + str(i * cols + j + offset) for j in range(cols)])
+
+		final_str += " \\\\\\\n"
+
+	final_str += old_spacing + "\\end{" + mc + "matrix}$0"
+
+	snip.expand_anon(final_str)
+
+
+def create_diag_n(snip):
+	mac = re.search('diagram(\d+)x(\d+)', snip.buffer[snip.line])
+
+	rows = int(mac.group(1))
+	cols = int(mac.group(2))
+
+	offset = cols + 1
+	old_spacing = snip.buffer[snip.line][:snip.buffer[snip.line].rfind('\t') + 1]
+	
+	final_str = snip.buffer[snip.line][0:-len(mac.group(0))] + "\\begin{tikzcd}\n"
+
+	seprr = " &\n"+old_spacing + '\t'
+	sepll = " &\n" + old_spacing + '\t' + "$"
+	sepr = " & "
+	sepl = " & $"
+	snip.buffer[snip.line] = ''
+	for i in range(rows-1):
+		final_str += old_spacing + '\t '
+		final_str += seprr.join([('$' + str(i * cols + j + offset)\
+		+' \\arrow{r}{$'+str((cols+1)*(rows+1) + i*cols + j + offset)\
+		+'} \\arrow[swap]{d}{$'+str((cols+1)*(rows+1)*(cols+1)*(rows+1)+(cols+1)*(rows+1)+ i*cols+j+offset)+'}')\
+		for j in range(cols-1)])
+		final_str = final_str + sepll + str(i*cols + cols-1 + offset)\
+		+' \\arrow[swap]{d}{$'+str( (cols+1)*(rows+1)*(cols+1)*(rows+1)+ (cols+1)*(rows+1)+ (i+1)*cols-1+offset)+'}'
+		final_str += " \\\\\\\n"
+
+	final_str += old_spacing + '\t'
+	final_str += seprr.join([('$' + str(rows * cols + j + offset)\
+		+' \\arrow{r}{$'+str((cols+1)*(rows+1) + rows*cols + j + offset)\
+		+'}')\
+		for j in range(cols-1)])
+	final_str = final_str + sepll + str(rows*cols + cols-1 + offset)
+	final_str += " \\\\\\\n"
+
+	final_str += old_spacing + "\\end{tikzcd}$0"
+
+	snip.expand_anon(final_str)
+
+def add_row(snip):
+	row_len = int(''.join(s for s in snip.buffer[snip.line] if s.isdigit()))
+	old_spacing = snip.buffer[snip.line][:snip.buffer[snip.line].rfind('\t') + 1]
+
+	snip.buffer[snip.line] = ''
+	
+	final_str = old_spacing
+	final_str += " & ".join(['$' + str(j + 1) for j in range(row_len)])
+	final_str += " \\\\\\"
+
+	snip.expand_anon(final_str)
+
+def create_std_hor_vector_n(snip):
+	tac = re.search('vec(\d+)', snip.buffer[snip.line])
+	entries = int(tac.group(1))
+	pieces = snip.buffer[snip.line].split(tac.group(0))
+	final_str = pieces[0] + "( "
+	snip.buffer[snip.line] = ''
+	final_str += " , ".join(['$' + str(j+1) for j in range(entries)])
+	final_str +=  " ) $0 " + pieces[1]
+	snip.expand_anon(final_str)
+
+def create_std_vert_vector_n(snip):
+	tac = re.search('(\w+)vecv(\d+)', snip.buffer[snip.line])
+	tok = tac.group(1)
+	entries = int(tac.group(2))
+	pieces = snip.buffer[snip.line].split(tac.group(0))
+	snip.buffer[snip.line] = ''
+	final_str = pieces[0] + "\\begin{"+tok+"matrix} $1 \\\\\\\\ "
+	final_str += " \\\\\\\\ ".join(['$' + str(j+2) for j in range(entries-1)])
+	final_str +=  " \\end{"+tok+"matrix} $0 " + pieces[1]
+	snip.expand_anon(final_str)
+
+def create_mod_n(snip):
+	tac = re.search('mod(\d+)', snip.buffer[snip.line])
+	entries = int(tac.group(1))
+	pieces = snip.buffer[snip.line].split(tac.group(0))
+	snip.buffer[snip.line] = ''
+	final_str = pieces[0] + '\\begin{align}\n'
+	final_str += \
+	"\\\\\\\\\n".join([pieces[0]+'\t$' + str(2*(j+1)) + ' \\equiv $' + str(2*(j+1)+1) \
+	+ '\\pmod{$1}' for j in range(entries)])
+	final_str += '\n' + pieces[0] + '\\end{align}' + pieces[1]
+	snip.expand_anon(final_str)
+
+endglobal
+
+
+################################################################################
+#											 3. Essential snippets																	 #
+################################################################################
+#
+#				I consider the following snippets to be among the most
+#				useful for moment-to-moment editing, maximizing the utility
+#				to complexity ratio.
+#
+################################################################################
+
+
+
+#===============================================================================
+#
+#	Description: inline math
+#	Function: if cursor does not touch a preceding word, open inline
+#	math brackets.
+# Example: -  
+#
+#-------------------------------------------------------------------------------
+snippet !! "inline math" A
+\$ $0 \$
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: wrap word in inline math
+#	Function: if cursor touches a preceding word, wrap it in inline
+#	math.
+#	Example: x!! becomes $x$<cursor>.
+#
+#-------------------------------------------------------------------------------
+snippet "(\S+)!!" "inline math mode" Ar
+\$`!p snip.rv = match.group(1)`\$
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: long inline math
+#	Function: format long inline math in new line
+# Example: - 
+#
+#-------------------------------------------------------------------------------
+snippet $$ "inline math mode" Ai
+
+\$
+	$0
+\$
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Turn word into parametrized math command 
+#	Function: when the cursor is touching a plain word, turn it into
+#	a command and place the cursor in the argument. 
+# Example: log@@ becomes \log{<cursor>}.
+#
+#-------------------------------------------------------------------------------
+snippet "([A-Za-z]+)@@" "Autoformatting command" rA
+\\`!p snip.rv = match.group(1)`{$0}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Turn word into command with predetermined argument
+#	Function: when the cursors is touching a plain word, turn it into
+#	a command, place the predetermined argument in the brackets, and
+#	escape to the right.
+#	Example: sin@a becomes \sin{a}<cursor>
+#
+#-------------------------------------------------------------------------------
+snippet "([A-Za-z]+)@(\w)" "Autoformatting common functions" rA
+\\`!p snip.rv = match.group(1)`{`!p snip.rv = match.group(2)`}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Turn word into command
+#	Function: when cursor touches a word, add backslash.
+# Example: textrm\\ becomes \textrm; good when forgetting
+# backslashes.
+#
+#-------------------------------------------------------------------------------
+snippet "([A-Za-z]+)\\" "Make into command" r
+\\`!p snip.rv = match.group(1)`
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Math environment insertion
+#	Function: Opens an autoformatted math environment
+# Example: b<tab>displaymath becomes
+#	\begin{displaymath}
+#		<cursor>
+# \end{displaymath}
+#	Source: honza snippets
+#
+#-------------------------------------------------------------------------------
+snippet "b(egin)?" "begin{} / end{}" br
+\begin{${1:something}}
+	${0:${VISUAL}}
+\end{$1}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Group of mathematics fonts snippets
+#	Function: insert letters from common families of math typefaces
+# Example: cO becomes \mathcal{O}, mR becomes \mathbb{R} and so on.
+#	Note: It may be useful to create shortcut commands for these
+#	typefaces; for instance mathcal --> mc, and so on.  But editors will
+#	hate you.
+#
+#-------------------------------------------------------------------------------
+snippet "c([A-Z])" "math calligraphic" r
+\mathcal{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "f([A-Za-z])" "math fraktur" r
+\mathfrac{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "scr([A-Z])" "math script" r
+\mathscr{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "m([A-Z])" "math blackboard" r
+\mathbb{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "b([A-Za-z])" "math bold" r
+\mathbf{`!p snip.rv = match.group(1)`}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Emphasis
+#	Function: wraps text in emph
+# Example: *this is important* expands to \emph{this is important}
+# Warning: be careful with this snippet, as it matches all
+# characters.
+#
+#-------------------------------------------------------------------------------
+snippet "\*(.+)\*" "Emphasis" wr
+\emph{`!p snip.rv = match.group(1)`}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Text and math right mode
+#	Function: Allows upright text in math mode, quickly defining
+#	operators.
+# Example: M becomes \mathrm{<cursor>}
+#
+#-------------------------------------------------------------------------------
+snippet T "inline math text" w
+\textrm{$0}
+endsnippet
+
+snippet M "inline math text" w
+\mathrm{$0}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: References and citations
+#	Function: expand references with pull list from bib file if
+#	available.
+# Example: -
+# Note: this works in tandem with vimtex.
+#
+#-------------------------------------------------------------------------------
+post_expand "vim.eval('timer_start(0, \"MyHandler\")')"
+snippet eqref "Equation Reference"
+\eqref{$0}
+endsnippet
+
+post_expand "vim.eval('timer_start(0, \"MyHandler\")')"
+snippet ref "Reference"
+\ref{$0}
+endsnippet
+post_expand "vim.eval('timer_start(0, \"MyHandler\")')"
+
+snippet cite "Citation"
+\cite{$0}
+endsnippet
+#-------------------------------------------------------------------------------
+
+
+
+#===============================================================================
+#
+#	Description: Set builder
+#	Function: preformats set builder notation
+# Example: -
+#
+#-------------------------------------------------------------------------------
+snippet builder "Set build notation proper" b
+\left\\{
+		${1:PREDICATE}
+	\mid
+		${0:CONDITIONS}
+\right\\}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Lists
+#	Function: expands horizontal list
+# Example: -
+#
+#-------------------------------------------------------------------------------
+context "math()"
+snippet list "Formatted horizontal array of entries" w
+( ${1:A1}, \ldots , ${0:AN} )
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+################################################################################
+#											 4. Visual snippets for symbols 												 #
+################################################################################
+#
+#				These snippets are inspired by the idea to "draw" the
+#				symbols you want to insert as a mnemonic device.  For some
+#				ubiquitous symbols, like S[um] and I[ntegral], this is not
+#				a good idea, and instead auditory description is used to
+#				form the snippet.
+#
+################################################################################
+
+
+
+#===============================================================================
+#
+#	Description: Group of bracket definitions
+#	Function: Formatted parentheses, brackets etc.
+# Example: (( expands to
+# \left(
+#				<cursor>
+# \right)
+#
+#-------------------------------------------------------------------------------
+snippet |||| "Inline norm"
+\Vert $0 \Vert
+endsnippet
+
+snippet | "Paired verticals" b
+\left\vert 
+					$0 
+\right\vert
+endsnippet
+
+snippet || "Paired double verticals" b
+\left\Vert 
+					$0 
+\right\Vert
+endsnippet
+
+snippet (( "Paired parens" b
+\left( 
+			$0
+\right)
+endsnippet
+
+snippet [[ "Paired brackets" b
+\left[ 
+			$0
+\right]
+endsnippet
+
+snippet {{ "Paired curly brackets" b
+\left\\{ 
+			$0 
+\right\\}
+endsnippet
+
+snippet lfl "Floor" wA
+\lfloor $0 \rfloor
+endsnippet
+
+snippet lcl "Ceiling" wA
+\lceil $0 \rceil
+endsnippet
+
+snippet [] "Bracket" iA
+[$0]
+endsnippet
+
+snippet {} "Curly" iA
+\\{$0\\}
+endsnippet
+
+snippet () "Parens" iA
+($0)
+endsnippet
+
+snippet <> "small angle bracket" iA
+\langle $0 \rangle
+endsnippet
+
+snippet <.> "angle bracket" iA
+\left\langle 
+							$0 
+\right\rangle
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Integrals
+#	Function: Expand integrals and related objects
+# Example: - 
+#
+#-------------------------------------------------------------------------------
+snippet Ix "Integral with element"
+\int$2
+			$0
+	\,\mathrm{d}{$1}
+endsnippet
+
+snippet I "Single integral"
+\int
+endsnippet
+
+snippet II "Double integral"
+\iint
+endsnippet
+
+snippet III "Triple integral"
+\iiint
+endsnippet
+
+snippet OI "Line integral"
+\oint
+endsnippet
+
+snippet dx "Integration element" i
+\,\mathrm{d}{$0}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Binary and unary operators
+#	Function: expand various binary and unary operators
+# Example: |x becomes \ltimes, ox becomes \otimes, and so on.
+#
+#-------------------------------------------------------------------------------
+snippet << "Asymptotically smaller" iA
+\ll
+endsnippet
+
+snippet >> "Asymptotically greater" iA
+\gg
+endsnippet
+
+snippet \- "setminus" i
+\setminus
+endsnippet
+
+snippet -\ "back slash quotient" i
+\backslash
+endsnippet
+
+snippet |x "Semidirect product" i
+\ltimes
+endsnippet
+
+snippet x| "Semidirect product" i
+\rtimes
+endsnippet
+
+snippet xx "small product" wA
+\times 
+endsnippet
+
+context "math()"
+snippet ox "Direct product, small" wA
+\otimes
+endsnippet
+
+snippet Ox "Direct product, big" wA
+\bigotimes
+endsnippet
+
+snippet o. "Direct dot, small" wA
+\odot
+endsnippet
+
+snippet Ox "Direct dot, big" wA
+\bigodot
+endsnippet
+
+snippet o+ "Direct sum, small" wA
+\oplus
+endsnippet
+
+snippet O+ "Direct sum, large" wA
+\bigoplus
+endsnippet
+
+snippet vv "vee" wA
+\vee
+endsnippet
+
+snippet VV "big vee" wA
+\bigvee
+endsnippet
+
+snippet WW "big wedge" wA
+\bigwedge
+endsnippet
+
+snippet ww "wedge" wA
+\wedge
+endsnippet
+
+snippet ~ "asymptotic or equivalence"
+\sim 
+endsnippet
+
+snippet ~- "asymptotic 2" iA
+\simeq 
+endsnippet
+
+snippet )( "broad asymptotic" 
+\asymp 
+endsnippet
+
+snippet ~= "asymptotic 3" iA
+\cong 
+endsnippet
+
+snippet == "equivalence" iA
+\equiv 
+endsnippet
+
+snippet ! "Negation" i
+\not 
+endsnippet
+
+snippet root "Root"
+\sqrt[$1]{$0}
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])\^rt" "Square root" r
+\sqrt{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet bx "Box times"
+\boxtimes
+endsnippet
+
+snippet b+ "Box plus"
+\boxplus
+endsnippet
+
+snippet uu "cup" wA
+\cup 
+endsnippet
+
+snippet UU "Bic cup" wA
+\bigcup 
+endsnippet
+
+snippet cc "cap" wA
+\cap 
+endsnippet
+
+snippet CC "Bic cap" wA
+\bigcap 
+endsnippet
+
+snippet Re "Real part"
+\Re{$0}
+endsnippet
+
+snippet Im "Imaginary part"
+\Im{$0}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Miscellaneous symbols
+#	Function: Common mathematical symbols
+# Example: O/ becomes \emptyset
+#	Note: vimtex has a system for many symbols; perhaps it is better
+#	to use that for such symbols and not overburden snippets.
+#
+#-------------------------------------------------------------------------------
+snippet O/ "Empty set" wA
+\emptyset 
+endsnippet
+
+snippet del "Laplace" w
+\Delta 
+endsnippet
+
+snippet grad "Gradient" w
+\nabla 
+endsnippet
+
+snippet sqr "Square" w
+\square 
+endsnippet
+
+snippet ii "in" wA
+\in 
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Group of decorations
+#	Function: decorate symbol indices, exponents, etc.
+# Example: x^~ becomes \tilde{x}, x__ becomes x_{<cursor>} etc.
+#
+#-------------------------------------------------------------------------------
+snippet __ "Autoindexing" iA
+_{$0}
+endsnippet
+
+snippet ^^ "Autoexponentiation" iA
+^{$0}
+endsnippet
+
+snippet subst "Underline with substack" w
+
+_{
+	\substack
+	{
+		$1 \\\\\\\\
+		$0 
+	}
+}
+endsnippet
+
+snippet ^! "Dagger" iA
+\dagger 
+endsnippet
+
+snippet ^ "Hat" w
+\hat{$0}
+endsnippet
+
+snippet ^w "Widehat" w
+\widehat{$0}
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])\^" "hat" r
+\hat{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])\^w" "widehat" rA
+\widehat{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet ^. "Dot"
+\dot{$0}
+endsnippet
+
+snippet ^- "Bar"
+\bar{$0}
+endsnippet
+
+snippet ^-- "Overline" i
+\overline{$0}
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])\^-" "bar" ri
+\overline{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])\^--" "overline" rA
+\overline{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet ^~~ "Widetilde" w
+\widetilde{$0}
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])\^~~" "wide tilde" rA
+\widetilde{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])\^~" "tilde" r
+\tilde{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet ^-> "Vector" w
+\vec{$0}
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])\^-\>" "vector" rA
+\vector{`!p snip.rv = match.group(1)`}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Arrows
+#	Function: a group of arrows and related indicators
+# Example: a --> b becomes a \longrightarrow b
+#
+#-------------------------------------------------------------------------------
+snippet -> "arrow" wA
+\rightarrow 
+endsnippet
+
+snippet => "thick arrow" iA
+\Rightarrow 
+endsnippet
+
+snippet <- "left arrow" 
+\leftarrow 
+endsnippet
+
+snippet <= "left thick arrow" 
+\Leftarrow 
+endsnippet
+
+snippet <-> "bi arrow" iA
+\leftrightarrow 
+endsnippet
+
+snippet <=> "bi arrow" iA
+\Leftrightarrow 
+endsnippet
+
+snippet --> "long arrow" iA
+\longrightarrow 
+endsnippet
+
+snippet <-- "long left arrow" i
+\longleftarrow 
+endsnippet
+
+snippet <--> "long bi arrow" iA
+\longleftrightarrow 
+endsnippet
+
+snippet ^| "up arrow" iA
+\uparrow 
+endsnippet 
+
+snippet v| "down arrow" iA
+\downarrow 
+endsnippet
+
+snippet v/ "sw arrow" wA
+\swarrow 
+endsnippet
+snippet ^\ "nw arrow" wA
+\nwarrow 
+endsnippet
+snippet ^/ "ne arrow" wA
+\nearrow 
+endsnippet
+snippet v\ "se arrow" wA
+\searrow 
+endsnippet
+
+snippet (-> "hook arrow" iA
+\hookrightarrow 
+endsnippet
+
+snippet <-) "hook arrow" iA
+\hookleftarrow 
+endsnippet
+
+snippet |-> "maps to" iA
+\mapsto 
+endsnippet
+
+snippet acton "Action" wA
+\curvearrowright 
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Continued fractions
+#	Function: expand recursively continued fractions
+# Example: -
+#
+#-------------------------------------------------------------------------------
+snippet cf "Continued fraction" i
+\cfrac{1}
+	{$1 +
+cf$0
+	}
+endsnippet
+
+snippet cff "Continued fraction generalized" i
+\cfrac{${1:1}}
+	{$2 +
+cff$0
+	}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Series, products and limits
+#	Function: Expand series, products and limits.
+# Example: S expands to \sum.
+#
+#-------------------------------------------------------------------------------
+snippet S "Series with finite bounds" w
+\sum
+endsnippet
+
+snippet S8 "Series with infinite upper bound" wA
+\sum_{$0}^{\infty}
+endsnippet
+
+snippet P "Product with finite bounds" w
+\prod
+endsnippet
+
+snippet P8 "Product with infinite upper bound" wA
+\prod_{$0}^{\infty}
+endsnippet
+
+snippet lim-> "direct limit" iA
+\varinjlim
+endsnippet
+
+snippet lim<- "inverse limit" iA 
+\varprojlim
+endsnippet
+
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Dots
+#	Function: various dot sequences
+# Example: .... becomes \ldots, \.. becomes \ddots etc.
+#
+#-------------------------------------------------------------------------------
+snippet .... "Dots" iA
+\ldots 
+endsnippet
+
+snippet *.. "Centered dots" iA
+\cdots 
+endsnippet
+
+snippet |.. "Vertical dots" iA
+\vdots 
+endsnippet
+
+snippet \.. "Diagonal dots" iA
+\ddots 
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Binomials and fractions
+#	Function: Snippets for binomial coefficients and fractions.
+# Example: / at beginning of a line will expand the big fraction,
+# while a/b will expand into \frac{a}{b}. 
+# Note: the last fraction snippet is not perfect; it is better to use
+# vimtex's frac toggle.
+#
+#-------------------------------------------------------------------------------
+snippet binom "Binomial coefficient"
+\binom { $1 } { $0 }
+endsnippet
+
+snippet Binom "Large Binomial coefficient"
+\binom	{$1}
+				{$0}
+endsnippet
+
+snippet / "Fraction" b
+\frac	{ ${1:NUMERATOR} }
+			{ ${0:DENOMINATOR} }
+endsnippet
+
+snippet " /" "Fraction" r
+ \frac { $1 } { $0 }
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])/([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])" "frac" ir
+\frac{`!p snip.rv = match.group(1)`}{`!p snip.rv = match.group(2)`}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Stacked relations
+#	Function: Inserts overbraces, over/undersets etc.
+# Example: :\to-|y: becomes \overset{\to}{y}
+#	Warning: the regex does not capture whitespace within the colons.
+#
+#-------------------------------------------------------------------------------
+snippet "\:(\S+)-\|(\S+)\:" "Note over relation" irA
+\overset{`!p snip.rv = match.group(1)`}{`!p snip.rv = match.group(2)`}
+endsnippet
+
+snippet "\:(\S+)\|-(\S+)\:" "Note under relation" irA
+\underset{`!p snip.rv = match.group(2)`}{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "\:(\S+)\{\|(\S+)\:" "Note over bracket" irA
+\overbrace{`!p snip.rv = match.group(2)`}^{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "\:(\S+)\|\}(\S+)\:" "Note under bracket" irA
+\underbrace{`!p snip.rv = match.group(1)`}_{`!p snip.rv = match.group(2)`}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+################################################################################
+#								5. Parametic snippets for matrices, tables etc.                #
+################################################################################
+#
+#				Using Python interpolation, we can make parametric snippets
+#				that autoformat arbitrary-sized tables, matrices,
+#				commutative diagrams and so on. 
+#
+################################################################################
+
+
+
+#===============================================================================
+#
+#	Description: Group of snippets for matrices, tables, commutative
+#	diagrams.
+#	Function:  Produces preformatted matrix/tabular and other
+#	two-dimensional environments, with argument slots ready to
+#	receive data.
+# Example: pmat2x2 becomes
+#	\begin{pmatrix}
+#		<cursor> & <cursor> \\
+#		<cursor> & <cursor>
+#	\end{pmatrix}
+# Source: this group relies on python code adapted from honza's
+# list
+#
+#-------------------------------------------------------------------------------
+pre_expand "create_table(snip)"
+snippet "tabular(\d+)x(\d+)" "Generate table of *width* by *height*" r  
+endsnippet
+
+pre_expand "create_mod_n(snip)"
+snippet "mod(\d+)" "Modulo list" rb
+endsnippet
+
+pre_expand "create_matrix_n(snip)"
+snippet "(\w)mat(\d+)x(\d+)" "Generate matrix of *width* by *height*" rb 
+endsnippet
+
+pre_expand "create_diag_n(snip)"
+snippet "diagram(\d+)x(\d+)" "Generate diagram of *width* by *height*" rb
+endsnippet
+
+pre_expand "create_std_hor_vector_n(snip)"
+snippet "vec(\d+)" "Generate vector with d entries" r
+endsnippet
+
+pre_expand "create_std_vert_vector_n(snip)"
+snippet "(\w+)vecv(\d+)" "Generate vertical vector with d entries" r
+endsnippet
+
+pre_expand "add_row(snip)"
+snippet "tr(\d+)" "Add table row of dimension ..." r
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Piecewise definition
+#	Function: Mainly used to define a function by cases
+# Example: - 
+#
+#-------------------------------------------------------------------------------
+snippet cases "Multi-line definition" b
+\begin{cases}
+	$1	\\\
+	$0
+\end{cases}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Rotation matrix
+#	Function: expands a 2x2 rotation matrix, with preformatted angle
+# Example: brot expands to a bracket rotation matrix
+#
+#-------------------------------------------------------------------------------
+snippet "(\w*)rot" "2x2 Rotation matrix" r
+\begin{`!p snip.rv = match.group(1)`matrix}
+	\cos{${1:\theta}}	&	\sin{$1} \\\\
+	-\sin{$1}	&	\cos{$1} \\\\
+\end{`!p snip.rv = match.group(1)`matrix}$0
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+################################################################################
+#						          6. Snippets for math environments                        #
+################################################################################
+#
+#				Simple snippets for creating preformatted math environments
+#				and their block components, as well as some list-like
+#				environments.
+#				
+#
+################################################################################
+
+
+
+#===============================================================================
+#
+#	Description: Equation environments
+#	Function: These snippets create labeled and unlabeled equations,
+#	alignments etc.
+# Example: - 
+#
+#-------------------------------------------------------------------------------
+snippet eq "Simple equation environment" b
+%
+\begin{equation*}
+	$0
+\end{equation*}
+%
+endsnippet
+
+snippet eqn "Labeled equation environment" bA
+%
+\begin{equation}
+\label{eq:$1}
+	$0
+\end{equation}
+%
+endsnippet
+
+snippet ald "Aligned sub-environment for equation" bA
+\begin{aligned}
+	$0
+\end{aligned}
+endsnippet
+
+snippet -= "Equation item for long equations" bA
+		${2:EQ_LEFT}
+${1:=}
+		${0:EQ_RIGHT}
+endsnippet
+
+snippet sp "Split"
+\begin{split}
+		${1:SP_LEFT}  
+\\\\
+		${0:SP_RIGHT}
+\end{split}
+endsnippet
+
+snippet al "Simple equation alignment environment" b
+%
+\begin{align*}
+	$0
+\end{align*}
+%
+endsnippet
+
+snippet alnit "Equation alignment item" A
+\label{eq:$1}
+		${3:AL_LEFT}
+&$2
+		${0:AL_RIGHT}
+\\\\
+endsnippet
+
+snippet aln "Labeled equation alignment environment" bA
+%
+\begin{align}
+	$0
+\end{align}
+%
+endsnippet
+
+snippet alit "Simple equation alignment item" A
+		${2:AL_LEFT}
+&$1 
+		${0:AL_RIGHT}
+\\\\
+endsnippet
+snippet eqs "Simple bunch of equations" bA
+%
+\begin{gather*}
+	$0
+\end{gather*}
+%
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Figure environment
+#	Function: Inserts a figure environment with captions, labels and
+#	placement parameters.
+# Example: -
+#
+#-------------------------------------------------------------------------------
+snippet fig "Figure environment" b
+\begin{figure}[${2:htpb}]
+	\centering
+	\includegraphics
+		[width=${3:0.8}\linewidth]
+		{${4:name.ext}}
+	\caption{${4/(\w+)\.\w+/\u$1/}$5}
+	\label{fig:${4/(\w+)\.\w+/$1/}}
+\end{figure}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+
+#===============================================================================
+#
+#	Description: Enumerations and other lists
+#	Function: A group of snippets to expand list environments
+# Example: -
+#
+#-------------------------------------------------------------------------------
+snippet enum "Enumerate" b
+\begin{enumerate}
+	\item $0
+\end{enumerate}
+endsnippet
+
+snippet item "Itemize" b
+\begin{itemize}
+	\item $0
+\end{itemize}
+endsnippet
+
+snippet desc "Description" b
+\begin{description}
+	\item[$1] $0
+\end{description}
+endsnippet
+
+snippet it "Individual item" b
+\item
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Commutative diagrams and sequences
+#	Function: Expand various preformatted diagrams
+# Example: commsq expands to a preformatted commutative square with
+# options.
+# Note: Also see the general template snippet diagramNxM
+#
+#-------------------------------------------------------------------------------
+snippet commtr "Commutative triangle, right aligned" A
+\begin{tikzcd}
+	$1
+		\arrow{r}        {$4}
+		\arrow[swap]{dr} {$6}     &
+	$2	
+		\arrow{d}        {$5}\\\\ &
+	$3
+\end{tikzcd}$0
+endsnippet
+
+snippet commtrc "Commutative triangle, center aligned" A
+\begin{tikzcd}
+	$1
+		\arrow{rr}       {$4}
+		\arrow[swap]{dr} {$6}     &&
+	$2
+		\arrow{dl}       {$5}\\\\ &
+	$3
+\end{tikzcd}$0
+endsnippet
+
+snippet commsq "Commutative square, simple" A
+\begin{tikzcd}
+	$1
+		\arrow{r}       {$5}
+		\arrow[swap]{d} {$6} &
+	$2
+		\arrow{d}       {$7}\\\\
+	$3
+		\arrow{r}       {$8} &
+	$4
+\end{tikzcd}$0
+endsnippet
+
+snippet exact "Short exact sequence" b
+0 	\longrightarrow		$1
+		\longrightarrow 	$2
+		\longrightarrow		$3
+		\longrightarrow		0$0
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+################################################################################
+# 7. Snippets for sections, documents and bibliography                         #
+################################################################################
+#
+#			Here we gather snippets for large scale structures.	
+#
+################################################################################
+
+
+
+#===============================================================================
+#
+#	Description:  Group of paper/book-scale structures
+#	Function: Organize sections, chapters etc.
+# Example: - 
+# Source: most of these come from honza's snippets.
+#
+#-------------------------------------------------------------------------------
+snippet part "Part" b
+\part{${1:part name}}%
+\label{prt:${2:${1/(\w+)|\W+/(?1:\L$0\E:_)/ga}}}
+
+$0
+endsnippet
+
+snippet cha "Chapter" b
+\chapter{${1:chapter name}}%
+\label{cha:${2:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+
+$0
+endsnippet
+
+snippet sec "Section"
+\section{${1:${VISUAL:section name}}}%
+\label{sec:${0:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+endsnippet
+
+snippet sec* "Section"
+\section*{${1:${VISUAL:section name}}}%
+\label{sec:${0:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+endsnippet
+
+
+snippet ssec "Subsection"
+\subsection{${1:${VISUAL:subsection name}}}%
+\label{sub:${0:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+endsnippet
+
+snippet ssec* "Subsection"
+\subsection*{${1:${VISUAL:subsection name}}}%
+\label{sub:${0:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+endsnippet
+
+snippet sssec "Subsubsection"
+\subsubsection{${1:${VISUAL:subsubsection name}}}%
+\label{ssub:${0:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+endsnippet
+
+snippet sssec* "Subsubsection"
+\subsubsection*{${1:${VISUAL:subsubsection name}}}%
+\label{ssub:${0:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+endsnippet
+
+snippet par "Paragraph"
+\paragraph{${1:${VISUAL:paragraph name}}}%
+\label{par:${0:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+endsnippet
+
+snippet spar "Subparagraph"
+\subparagraph{${1:${VISUAL:subparagraph name}}}%
+\label{par:${0:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Package definition
+#	Function: Expand a package command with options
+# Example: - 
+#
+#-------------------------------------------------------------------------------
+snippet pac "Package" b
+\usepackage`!p snip.rv='[' if t[1] else ""`${1:options}`!p snip.rv = ']' if t[1] else ""`{${2:package}}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Theorems, lemmas etc
+#	Function: Expands labeled and unlabeled theorems, etc.
+# Example: thm expands to a labeled theorem definition.
+# Note: You need to define these environments in your preamble in order for the
+# compiler to recognize them.
+#
+#-------------------------------------------------------------------------------
+snippet thm "Theorem environment" b
+%
+\begin{theorem}
+	$0
+\end{theorem}
+%
+endsnippet
+
+snippet Prop "Named proposition" b
+%
+\begin{proposition}[${1:${VISUAL:proposition name}}]
+\label{prop:${2:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+	$0
+\end{proposition}
+%
+endsnippet
+
+snippet Lem "Named lemma" b
+%
+\begin{lemma}[${1:${VISUAL:lemma name}}]
+\label{lem:${2:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+	$0
+\end{lemma}
+%
+endsnippet
+
+snippet Def "Named defintion" b
+%
+\begin{definition}[${1:${VISUAL:definition name}}]
+\label{def:${2:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+	$0
+\end{definition}
+%
+endsnippet
+
+snippet Cor "Named corollary" b
+%
+\begin{corollary}[${1:${VISUAL:corollary name}}]
+\label{cor:${2:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+	$0
+\end{corollary}
+%
+endsnippet
+
+snippet Thm "Named theorem" b
+%
+\begin{theorem}[${1:${VISUAL:Theorem name}}]
+\label{thm:${2:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+	$0
+\end{theorem}
+%
+endsnippet
+
+snippet def "Definition environment" b
+%
+\begin{definition}
+	$0
+\end{definition}
+%
+endsnippet
+
+snippet rem "Remark environment" b
+%
+\begin{remark}
+	$0
+\end{remark}
+%
+endsnippet
+
+snippet cor "Corollary environment" b
+%
+\begin{corollary}
+	$0
+\end{corollary}
+%
+endsnippet
+
+snippet prop "Proposition environment" b
+%
+\begin{proposition}
+	$0
+\end{proposition}
+%
+endsnippet
+
+snippet lem "Lemma environment" b
+%
+\begin{lemma}
+	$0
+\end{lemma}
+%
+endsnippet
+
+snippet exam "Example environment" b
+%
+\begin{example}
+	$0
+\end{example}
+%
+endsnippet
+
+snippet proof "Standard proof environment from amsthm" b
+\begin{proof}
+	$0
+\end{proof}
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+#===============================================================================
+#
+#	Description: Full document template
+#	Function: Expands a full latex preamble and document
+# Example: -
+# Note: may be too verbose; edit accordingly.
+#
+#-------------------------------------------------------------------------------
+snippet standard "Standard template for longer documents" b
+\documentclass[${1:11pt}]\{${2:article}\}
+
+%---Common packages for LaTeX documents--- 
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{mathrsfs}
+\usepackage{amsthm}
+\usepackage[all]{xy}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{verbatim}
+\usepackage{tikz-cd}
+$3
+
+%---User defined commands-----------------
+
+$4
+
+%---User defined environments-------------
+
+\newtheorem{${5:theorem}}{${6:Theorem}}[${7:section}]
+\theoremstyle{definition}
+\newtheorem{definition}[$5]{Definition}
+\theoremstyle{plain}
+\newtheorem{lemma}[$5]{Lemma}
+\theoremstyle{plain}
+\newtheorem{proposition}[$5]{Proposition}
+\theoremstyle{remark}
+\newtheorem{remark}[$5]{Remark}
+\theoremstyle{plain} 
+\newtheorem{corollary}[$5]{Corollary}
+\theoremstyle{remark}
+\newtheorem{example}[$5]{Example}
+$8
+
+\title{$9}
+\author{$10}
+
+\begin{document}
+\maketitle
+
+$0
+
+\nocite{*}
+\bibliography{${11:`!p snip.rv = snip.basename`}}
+\bibliographystyle{plain}
+\end{document}
+endsnippet
+
+#-------------------------------------------------------------------------------
+#===============================================================================
+
+
+
+################################################################################
+# 							         8. Tikz snippets                                      #
+################################################################################
+#
+#			Here we gather tikz snippets.  Completely unpolished	
+#
+################################################################################
+
+
+
+#===============================================================================
+#
+#	Description: Generic tikz snippet dump
+#	Function: expand tikz snippets to guide programmatic image
+#	generation
+# Example: circle expands to a circle image
+#
+#-------------------------------------------------------------------------------
+snippet tik "Tikz picture"
+\begin{tikzpicture}
+$0
+\end{tikzpicture}
+endsnippet
+
+snippet draw "Generic draw"
+\draw[$1] ${2:(0,0)} ${3:--} ${4:(5,5)}
+endsnippet
+
+snippet grid "Assist grid"
+\draw[step=${1:1cm},${2:gray},${3:very thin}] ${4:(0,0)} grid ${5:(5,5)};
+endsnippet
+
+snippet circle "Circle"
+\draw[${1:black},${2:thick}] (0,0) circle (2cm);
+endsnippet
+
+snippet node "Node"
+\node (${1:LABEL}) [${2:STYLE}] \{${3:TEXT}\};
+endsnippet
+
+snippet flowchart "Flowchart" b
+\begin{tikzpicture}[node distance=${1:2cm}]
+$2
+\end{tikzpicture}
+endsnippet
+
+snippet flowstyles "Flowchart styles" b
+\usetikzlibrary{shapes.geometric, arrows}
+\tikzstyle{boxred} = [rectangle, rounded corners, 
+	minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=red!10]
+\tikzstyle{boxgreen} = [rectangle, rounded corners, 
+	minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=green!10]
+\tikzstyle{boxblue} = [rectangle, rounded corners, 
+	minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=blue!10]
+\tikzstyle{ellred} = [ellipse, rounded corners, 
+	minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=red!10]
+\tikzstyle{ellgreen} = [ellipse, rounded corners, 
+	minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=green!10]
+\tikzstyle{ellblue} = [ellipse, rounded corners, 
+	minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=blue!10]
+\tikzstyle{arrow} = [thick,->,>=stealth]
+endsnippet
+#-------------------------------------------------------------------------------
+#===============================================================================
