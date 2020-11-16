@@ -1,97 +1,97 @@
 ################################################################################
 ##                                                                            ## 
 ##                                                                            ##
-##							UltiSnips Snippets for Latex, with commentary                 ##
-##										Author: Ioannis Konstantoulas                           ##
+##              UltiSnips Snippets for Latex, with commentary                 ##
+##                    Author: Ioannis Konstantoulas                           ##
 ##                                                                            ##
 ##                                                                            ## 
 ##                                                                            ##
 ################################################################################
 #
-#		Contents
-#		========
-#		
-#			1. Guiding principles
-#			2. Python functions preamble
-#			3. Essential snippets
-#			4. Visual snippets for symbols
-#			5. Parametric snippets for matrices, tables, diagrams etc.
-#			6. Snippets for math environments and vertical structures
-#			7. Snippets for sections, documents and bibliography
-#			8. Tikz snippets (unpolished)
+#    Contents
+#    ========
+#    
+#      1. Guiding principles
+#      2. Python functions preamble
+#      3. Essential snippets
+#      4. Visual snippets for symbols
+#      5. Parametric snippets for matrices, tables, diagrams etc.
+#      6. Snippets for math environments and vertical structures
+#      7. Snippets for sections, documents and bibliography
+#      8. Tikz snippets (unpolished)
 #
-#		Credits
-#		=======
+#    Credits
+#    =======
 #
-#			The inspiration for this document came from honza's master
-#			list of snippets on github; the tex zone specifications
-#			designed to detect math modes came from Gilles Castel who has
-#			a website dedicated to advanced snippet editing.
+#      The inspiration for this document came from honza's master
+#      list of snippets on github; the tex zone specifications
+#      designed to detect math modes came from Gilles Castel who has
+#      a website dedicated to advanced snippet editing.
 #
-#		Disclaimer
-#		==========
+#    Disclaimer
+#    ==========
 #
-#			This is my snippets file, designed according to principles
-#			that work for me, and facilitate my daily workflow.  There is
-#			no guarantee that what works for me will also work for you.
-#			Treat this document as a collection of suggestions to follow
-#			at your own convenience.
+#      This is my snippets file, designed according to principles
+#      that work for me, and facilitate my daily workflow.  There is
+#      no guarantee that what works for me will also work for you.
+#      Treat this document as a collection of suggestions to follow
+#      at your own convenience.
 #
-#		*	Viewing suggestion:	Many of the snippets below involve long
-#			horizontal lines, up to 120 columns.  I have made an effort
-#			to keep most text in the under 80 column length, but I
-#			suggest you use a wide terminal or GUI screen to avoid
-#			wrapping or text vanishing issues.
+#    *  Viewing suggestion:  Many of the snippets below involve long
+#      horizontal lines, up to 120 columns.  I have made an effort
+#      to keep most text in the under 80 column length, but I
+#      suggest you use a wide terminal or GUI screen to avoid
+#      wrapping or text vanishing issues.
 #
 ################################################################################
 
 
 
 ################################################################################
-#											 1. Guiding principles																	 #
+#                       1. Guiding principles                                   #
 ################################################################################
 #
-#		A.	All principles are guidelines.  Feel free to break them if
-#				they become a hindrance.
+#    A.  All principles are guidelines.  Feel free to break them if
+#        they become a hindrance.
 #
-#		B.	Automate whatever you can, starting with the most
-#				cognitively tedious tasks that are done most frequently.
-#				These may or may not be the "slowest" tasks.	
+#    B.  Automate whatever you can, starting with the most
+#        cognitively tedious tasks that are done most frequently.
+#        These may or may not be the "slowest" tasks.  
 #
-#		C.	Be mindful of composability of snippets: think about how
-#				your snippets will expand while you are in another snippet.
+#    C.  Be mindful of composability of snippets: think about how
+#        your snippets will expand while you are in another snippet.
 #
-#		D.	Minimize nuisance navigation: design snippets that place you
-#				where you are supposed to edit text, and guide you to
-#				their exit cleanly.
+#    D.  Minimize nuisance navigation: design snippets that place you
+#        where you are supposed to edit text, and guide you to
+#        their exit cleanly.
 #
-#		E.	Eliminate low-level typesetting.  You should not have to
-#				manually open or close an environment, enter a backslash,
-#				open and close command brackets, indent text, and so on.
+#    E.  Eliminate low-level typesetting.  You should not have to
+#        manually open or close an environment, enter a backslash,
+#        open and close command brackets, indent text, and so on.
 #
-#		F.	Use composable visual tokens for latex symbols as much as
-#				possible.  In general, use tokens that trigger your memory
-#				the best.
-#				
-#		G.	Exploit vertical space for long equation groups, and tame
-#				horizontal space.  Use folds to handle the long environments
-#				that may result.
-#				
+#    F.  Use composable visual tokens for latex symbols as much as
+#        possible.  In general, use tokens that trigger your memory
+#        the best.
+#        
+#    G.  Exploit vertical space for long equation groups, and tame
+#        horizontal space.  Use folds to handle the long environments
+#        that may result.
+#        
 ################################################################################
 
 
 
 ################################################################################
-#											 2. Python functions preamble														 #
+#                       2. Python functions preamble                           #
 ################################################################################
 #
-#				This section initializes all python functions used in the
-#				programmable snippets, and declares the math() context that
-#				some snippets are restricted to.  Feel free to skip.
-#				
-#				Source: most of the code in this section is either verbatim
-#				or adapted from honza's snippets, and from Gilles Castel's
-#				work for the math() context.
+#        This section initializes all python functions used in the
+#        programmable snippets, and declares the math() context that
+#        some snippets are restricted to.  Feel free to skip.
+#        
+#        Source: most of the code in this section is either verbatim
+#        or adapted from honza's snippets, and from Gilles Castel's
+#        work for the math() context.
 #
 #
 ################################################################################
@@ -259,12 +259,12 @@ endglobal
 
 
 ################################################################################
-#											 3. Essential snippets																	 #
+#                       3. Essential snippets                                  #
 ################################################################################
 #
-#				I consider the following snippets to be among the most
-#				useful for moment-to-moment editing, maximizing the utility
-#				to complexity ratio.
+#        I consider the following snippets to be among the most
+#        useful for moment-to-moment editing, maximizing the utility
+#        to complexity ratio.
 #
 ################################################################################
 
@@ -525,14 +525,14 @@ endsnippet
 
 #===============================================================================
 ################################################################################
-#											 4. Visual snippets for symbols 												 #
+#                       4. Visual snippets for symbols                         #
 ################################################################################
 #
-#				These snippets are inspired by the idea to "draw" the
-#				symbols you want to insert as a mnemonic device.  For some
-#				ubiquitous symbols, like S[um] and I[ntegral], this is not
-#				a good idea, and instead auditory description is used to
-#				form the snippet.
+#        These snippets are inspired by the idea to "draw" the
+#        symbols you want to insert as a mnemonic device.  For some
+#        ubiquitous symbols, like S[um] and I[ntegral], this is not
+#        a good idea, and instead auditory description is used to
+#        form the snippet.
 #
 ################################################################################
 
@@ -1157,12 +1157,12 @@ endsnippet
 
 
 ################################################################################
-#								5. Parametic snippets for matrices, tables etc.                #
+#                5. Parametric snippets for matrices, tables etc.              #
 ################################################################################
 #
-#				Using Python interpolation, we can make parametric snippets
-#				that autoformat arbitrary-sized tables, matrices,
-#				commutative diagrams and so on. 
+#        Using Python interpolation, we can make parametric snippets
+#        that autoformat arbitrary-sized tables, matrices,
+#        commutative diagrams and so on. 
 #
 ################################################################################
 
@@ -1253,13 +1253,13 @@ endsnippet
 
 
 ################################################################################
-#						          6. Snippets for math environments                        #
+#                      6. Snippets for math environments                       #
 ################################################################################
 #
-#				Simple snippets for creating preformatted math environments
-#				and their block components, as well as some list-like
-#				environments.
-#				
+#        Simple snippets for creating preformatted math environments
+#        and their block components, as well as some list-like
+#        environments.
+#        
 #
 ################################################################################
 
@@ -1742,10 +1742,10 @@ endsnippet
 
 
 ################################################################################
-# 							         8. Tikz snippets                                      #
+#                        8. Tikz snippets                                      #
 ################################################################################
 #
-#			Here we gather tikz snippets.  Completely unpolished	
+#      Here we gather tikz snippets.  Completely unpolished  
 #
 ################################################################################
 
