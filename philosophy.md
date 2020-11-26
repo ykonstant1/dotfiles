@@ -1,6 +1,3 @@
-
-                                                                             
-                                                                            
 # Guiding principles                                   
 
 
@@ -29,5 +26,3 @@
 *	Exploit vertical space for long equation groups, and tame
 	horizontal space.  Use folds to handle the long environments that
 	may result.
-        
-
