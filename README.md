@@ -15,3 +15,12 @@ minutes of my work at https://www.reddit.com/r/unixporn/comments/ek3cyc/cinnamon
 The rest of the video has been surpassed by the first link above,
 but I am very fond of the soft style I delivered in the second
 link.
+
+# Credits
+
+Much of the Python code involved in the snippets comes from Honza's
+master list : https://github.com/honza/vim-snippets
+
+The implementation of the ```math()``` context comes (to my
+knowledge) from Gilles Castel who has a website dedicated to
+advanced Latex typesetting in Vim: https://castel.dev/
