@@ -1,0 +1,1515 @@
+priority -50
+
+extends texmath
+
+global !p
+
+texMathZones = ['texMathRegion' + x for x in ['', 'X', 'XX', 'Env', 'EnvStarred', 'Ensured']]
+texIgnoreMathZones = ['texMathTextArg']
+
+texMathZoneIds = vim.eval('map('+str(texMathZones)+", 'hlID(v:val)')")
+texIgnoreMathZoneIds = vim.eval('map('+str(texIgnoreMathZones)+", 'hlID(v:val)')")
+
+ignore = texIgnoreMathZoneIds[0]
+
+def math():
+	synstackids = vim.eval("synstack(line('.'), col('.') - (col('.')>=2 ? 1 : 0))")
+	try:
+		first = next(i for i in reversed(synstackids) if i in texIgnoreMathZoneIds or i in texMathZoneIds)
+		return first != ignore
+	except StopIteration:
+		return False
+
+def create_table(snip):
+	rows = snip.buffer[snip.line].split('x')[0]
+	cols = snip.buffer[snip.line].split('x')[1]
+
+	int_val = lambda string: int(''.join(s for s in string if s.isdigit()))
+	
+	rows = int_val(rows)
+	cols = int_val(cols)
+
+	offset = cols + 1
+	old_spacing = snip.buffer[snip.line][:snip.buffer[snip.line].rfind('\t') + 1]
+	
+	snip.buffer[snip.line] = ''
+	
+	final_str = old_spacing + "\\begin{tabular}{|" + "|".join(['$' + str(i + 1) for i in range(cols)]) + "|}\n"
+
+	for i in range(rows):
+		final_str += old_spacing + '\t'
+		final_str += " & ".join(['$' + str(i * cols + j + offset) for j in range(cols)])
+
+		final_str += " \\\\\\\n"
+
+	final_str += old_spacing + "\\end{tabular}\n$0"
+
+	snip.expand_anon(final_str)
+
+def create_matrix_n(snip):
+	mac = re.search('(\w)mat(\d+)x(\d+)', snip.buffer[snip.line])
+	mc = mac.group(1)
+	rows = int(mac.group(2))
+	cols = int(mac.group(3))
+
+	offset = cols + 1
+	old_spacing = snip.buffer[snip.line][:snip.buffer[snip.line].rfind('\t') + 1]
+	
+	
+	final_str = snip.buffer[snip.line][0:-len(mac.group(0))] + "\\begin{" + mc + "matrix}\n"
+
+
+	snip.buffer[snip.line] = ''
+	for i in range(rows):
+		final_str += old_spacing + '\t'
+		final_str += " & ".join(['$' + str(i * cols + j + offset) for j in range(cols)])
+
+		final_str += " \\\\\\\n"
+
+	final_str += old_spacing + "\\end{" + mc + "matrix}$0"
+
+	snip.expand_anon(final_str)
+
+
+def create_diag_n(snip):
+	mac = re.search('diagram(\d+)x(\d+)', snip.buffer[snip.line])
+
+	rows = int(mac.group(1))
+	cols = int(mac.group(2))
+
+	offset = cols + 1
+	old_spacing = snip.buffer[snip.line][:snip.buffer[snip.line].rfind('\t') + 1]
+	
+	final_str = snip.buffer[snip.line][0:-len(mac.group(0))] + "\\begin{tikzcd}\n"
+
+	seprr = " &\n"+old_spacing + '\t'
+	sepll = " &\n" + old_spacing + '\t' + "$"
+	sepr = " & "
+	sepl = " & $"
+	snip.buffer[snip.line] = ''
+	for i in range(rows-1):
+		final_str += old_spacing + '\t '
+		final_str += seprr.join([('$' + str(i * cols + j + offset)\
+		+' \\arrow{r}{$'+str((cols+1)*(rows+1) + i*cols + j + offset)\
+		+'} \\arrow[swap]{d}{$'+str((cols+1)*(rows+1)*(cols+1)*(rows+1)+(cols+1)*(rows+1)+ i*cols+j+offset)+'}')\
+		for j in range(cols-1)])
+		final_str = final_str + sepll + str(i*cols + cols-1 + offset)\
+		+' \\arrow[swap]{d}{$'+str( (cols+1)*(rows+1)*(cols+1)*(rows+1)+ (cols+1)*(rows+1)+ (i+1)*cols-1+offset)+'}'
+		final_str += " \\\\\\\n"
+
+	final_str += old_spacing + '\t'
+	final_str += seprr.join([('$' + str(rows * cols + j + offset)\
+		+' \\arrow{r}{$'+str((cols+1)*(rows+1) + rows*cols + j + offset)\
+		+'}')\
+		for j in range(cols-1)])
+	final_str = final_str + sepll + str(rows*cols + cols-1 + offset)
+	final_str += " \\\\\\\n"
+
+	final_str += old_spacing + "\\end{tikzcd}$0"
+
+	snip.expand_anon(final_str)
+
+def add_row(snip):
+	row_len = int(''.join(s for s in snip.buffer[snip.line] if s.isdigit()))
+	old_spacing = snip.buffer[snip.line][:snip.buffer[snip.line].rfind('\t') + 1]
+
+	snip.buffer[snip.line] = ''
+	
+	final_str = old_spacing
+	final_str += " & ".join(['$' + str(j + 1) for j in range(row_len)])
+	final_str += " \\\\\\"
+
+	snip.expand_anon(final_str)
+
+def create_std_hor_vector_n(snip):
+	tac = re.search('vec(\d+)', snip.buffer[snip.line])
+	entries = int(tac.group(1))
+	pieces = snip.buffer[snip.line].split(tac.group(0))
+	final_str = pieces[0] + "( "
+	snip.buffer[snip.line] = ''
+	final_str += " , ".join(['$' + str(j+1) for j in range(entries)])
+	final_str +=  " ) $0 " + pieces[1]
+	snip.expand_anon(final_str)
+
+def create_std_vert_vector_n(snip):
+	tac = re.search('(\w+)vecv(\d+)', snip.buffer[snip.line])
+	tok = tac.group(1)
+	entries = int(tac.group(2))
+	pieces = snip.buffer[snip.line].split(tac.group(0))
+	snip.buffer[snip.line] = ''
+	final_str = pieces[0] + "\\begin{"+tok+"matrix} $1 \\\\\\\\ "
+	final_str += " \\\\\\\\ ".join(['$' + str(j+2) for j in range(entries-1)])
+	final_str +=  " \\end{"+tok+"matrix} $0 " + pieces[1]
+	snip.expand_anon(final_str)
+
+def create_mod_n(snip):
+	tac = re.search('mod(\d+)', snip.buffer[snip.line])
+	entries = int(tac.group(1))
+	pieces = snip.buffer[snip.line].split(tac.group(0))
+	snip.buffer[snip.line] = ''
+	final_str = pieces[0] + '\\begin{align}\n'
+	final_str += \
+	"\\\\\\\\\n".join([pieces[0]+'\t$' + str(2*(j+1)) + ' \\equiv $' + str(2*(j+1)+1) \
+	+ '\\pmod{$1}' for j in range(entries)])
+	final_str += '\n' + pieces[0] + '\\end{align}' + pieces[1]
+	snip.expand_anon(final_str)
+
+endglobal
+
+snippet copyright "Copyright notice and license" b
+% © `date +%Y` [COPYRIGHT HOLDER]. All rights reserved.
+%
+% This program is free software: you can redistribute it and/or
+% modify it under the terms of the GNU General Public License as
+% published by the Free Software Foundation, either version 3 of
+% the License, or (at your option) any later version.
+% 
+% This program is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+% GNU General Public License for more details.
+% 
+% You should have received a copy of the GNU General Public
+% License along with this program. If not, see
+% <https://www.gnu.org/licenses/>.
+endsnippet
+
+snippet "b(egin)?" "begin{} / end{}" br
+\begin{${1:something}}
+	${0:${VISUAL}}
+\end{$1}
+endsnippet
+
+snippet abst "abstract environment" b
+\begin{abstract}
+	$0
+\end{abstract}
+endsnippet
+
+snippet tab "tabular / array environment" b
+\begin{${1:t}${1/(t)$|(a)$|(.*)/(?1:abular)(?2:rray)/}}{${2:c}}
+$3${2/(?<=.)(c|l|r)|./(?1: & )/g}
+\end{$1${1/(t)$|(a)$|(.*)/(?1:abular)(?2:rray)/}}
+endsnippet
+
+pre_expand "create_table(snip)"
+snippet "tabular(\d+)x(\d+)" "Generate table of *width* by *height*" r  
+endsnippet
+
+pre_expand "create_mod_n(snip)"
+snippet "mod(\d+)" "Modulo list" rb
+endsnippet
+
+pre_expand "create_matrix_n(snip)"
+snippet "(\w)mat(\d+)x(\d+)" "Generate matrix of *width* by *height*" rb 
+endsnippet
+
+pre_expand "create_diag_n(snip)"
+snippet "diagram(\d+)x(\d+)" "Generate diagram of *width* by *height*" rb
+endsnippet
+
+
+pre_expand "create_std_hor_vector_n(snip)"
+snippet "vec(\d+)" "Generate vector with d entries" r
+endsnippet
+
+pre_expand "create_std_vert_vector_n(snip)"
+snippet "(\w+)vecv(\d+)" "Generate vertical vector with d entries" r
+endsnippet
+
+pre_expand "add_row(snip)"
+snippet "tr(\d+)" "Add table row of dimension ..." r
+endsnippet
+
+snippet table "Table environment" b
+\begin{table}[${1:htpb}]
+	\centering
+	\caption{${2:caption}}
+	\label{tab:${3:label}}
+	\begin{${4:t}${4/(t)$|(a)$|(.*)/(?1:abular)(?2:rray)/}}{${5:c}}
+	$6${5/(?<=.)(c|l|r)|./(?1: & )/g}
+	\end{$4${4/(t)$|(a)$|(.*)/(?1:abular)(?2:rray)/}}
+\end{table}
+endsnippet
+
+snippet fig "Figure environment" b
+\begin{figure}[${2:htpb}]
+	\centering
+	\includegraphics
+		[width=${3:0.8}\linewidth]
+		{${4:name.ext}}
+	\caption{${4/(\w+)\.\w+/\u$1/}$5}
+	\label{fig:${4/(\w+)\.\w+/$1/}}
+\end{figure}
+endsnippet
+
+snippet enum "Enumerate" b
+\begin{enumerate}
+	\item $0
+\end{enumerate}
+endsnippet
+
+snippet item "Itemize" b
+\begin{itemize}
+	\item $0
+\end{itemize}
+endsnippet
+
+snippet desc "Description" b
+\begin{description}
+\item[$1] $0
+\end{description}
+endsnippet
+
+snippet it "Individual item" b
+\item $0
+endsnippet
+
+snippet part "Part" b
+\part{${1:part name}}%
+\label{prt:${2:${1/(\w+)|\W+/(?1:\L$0\E:_)/ga}}}
+
+$0
+endsnippet
+
+snippet cha "Chapter" b
+\chapter{${1:chapter name}}%
+\label{cha:${2:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+
+$0
+endsnippet
+
+snippet sec "Section"
+\section{${1:${VISUAL:section name}}}%
+\label{sec:${2:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+
+$0
+endsnippet
+
+snippet sec* "Section"
+\section*{${1:${VISUAL:section name}}}%
+\label{sec:${2:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+
+$0
+endsnippet
+
+
+snippet ssec "Subsection"
+\subsection{${1:${VISUAL:subsection name}}}%
+\label{sub:${0:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+endsnippet
+
+snippet ssec* "Subsection"
+\subsection*{${1:${VISUAL:subsection name}}}%
+\label{sub:${0:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+endsnippet
+
+snippet sssec "Subsubsection"
+\subsubsection{${1:${VISUAL:subsubsection name}}}%
+\label{ssub:${0:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+endsnippet
+
+snippet sssec* "Subsubsection"
+\subsubsection*{${1:${VISUAL:subsubsection name}}}%
+\label{ssub:${0:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+endsnippet
+
+snippet par "Paragraph"
+\paragraph{${1:${VISUAL:paragraph name}}}%
+\label{par:${0:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+endsnippet
+
+snippet spar "Subparagraph"
+\subparagraph{${1:${VISUAL:subparagraph name}}}%
+\label{par:${0:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+endsnippet
+
+snippet cases "Multi-line definition" b
+${1:OBJECT} =
+	\begin{cases}
+		${2:DEFINITION} & ${3:CONDITION}  \\\
+		${4:DEFINITION} & ${0:CONDITION}
+	\end{cases}
+endsnippet
+
+snippet ac "Acroynm normal" b
+\ac{${1:acronym}}
+$0
+endsnippet
+
+snippet acl "Acroynm expanded" b
+\acl{${1:acronym}}
+$0
+endsnippet
+
+snippet pac "Package" b
+\usepackage`!p snip.rv='[' if t[1] else ""`${1:options}`!p snip.rv = ']' if t[1] else ""`{${2:package}}
+endsnippet
+
+snippet ( "Long parenthesis with single symbol"
+\left(${1:${VISUAL:contents}}\right)$0
+endsnippet
+
+snippet "mint(ed)?( (\S+))?" "Minted code typeset" br
+\begin{listing}
+\begin{minted}[linenos,numbersep=5pt,frame=lines,framesep=2mm]{${1:`!p
+snip.rv = match.group(3) if match.group(2) is not None else "language"`}}
+${2:${VISUAL:code}}
+\end{minted}
+\caption{${3:caption name}}
+\label{lst:${4:${3/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+\end{listing}
+
+$0
+endsnippet
+# vim:ft=snippets:
+snippet | "Paired verticals" b
+\left\vert 
+	$0 
+\right\vert
+endsnippet
+
+snippet (( "Paired parens" b
+\left(
+	$0
+\right)
+endsnippet
+
+snippet [[ "Paired brackets" b
+\left[ 
+	$0
+\right]
+endsnippet
+
+snippet {{ "Paired curly brackets" b
+\left\\{ 
+	$0 
+\right\\}
+endsnippet
+
+snippet dx "Integration element" w
+\,\mrm{d}{$0}
+endsnippet
+
+snippet _^ "Sub/superscript" iA
+_{$1}^{$0}
+endsnippet
+
+snippet Ix "Full integral"
+\int$2
+	$0
+	\,\mathrm{d}{$1}
+endsnippet
+
+snippet I "Single integral"
+\int
+endsnippet
+
+snippet II "Double integral"
+\iint
+endsnippet
+
+snippet III "Triple integral"
+\iiint
+endsnippet
+
+snippet OI "Line integral"
+\oint
+endsnippet
+
+snippet \- "setminus" i
+\setminus
+endsnippet
+
+snippet -\ "back slash quotient" i
+\backslash
+endsnippet
+
+snippet |x "Semidirect product" i
+\ltimes
+endsnippet
+
+snippet x| "Semidirect product" i
+\rtimes
+endsnippet
+
+snippet xx "small product" wA
+\times 
+endsnippet
+
+context "math()" 
+snippet ox "Direct product, small" wA
+\otimes
+endsnippet
+
+snippet Ox "Direct product, big" wA
+\bigotimes
+endsnippet
+
+snippet o. "Direct dot, small" wA
+\odot
+endsnippet
+
+snippet Ox "Direct dot, big" wA
+\bigodot
+endsnippet
+
+snippet o+ "Direct sum, small" wA
+\oplus
+endsnippet
+
+snippet O+ "Direct sum, large" wA
+\bigoplus
+endsnippet
+
+snippet vv "vee" wA
+\vee
+endsnippet
+
+snippet VV "big vee" wA
+\bigvee
+endsnippet
+
+snippet WW "big wedge" wA
+\bigwedge
+endsnippet
+
+snippet ww "wedge" wA
+\wedge
+endsnippet
+
+snippet "B((\\)?\w+)" "Bold math" wr
+\mathbf{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "\*(.+)\*" "Emphasis" wr
+\emph{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet subst "Underline with substack" w
+_{\substack{
+    $1 \\\\\\\\
+    $0 }}
+endsnippet
+
+snippet lfl "Floor" wA
+\lfloor $0 \rfloor
+endsnippet
+
+snippet lcl "Ceiling" wA
+\lceil $0 \rceil
+endsnippet
+
+snippet .... "Dots" iA
+\ldots 
+endsnippet
+
+snippet *.. "Dots" iA
+\cdots 
+endsnippet
+
+snippet |.. "Vertical dots" iA
+\vdots 
+endsnippet
+snippet \.. "Diagonal dots" iA
+\ddots 
+endsnippet
+
+snippet ^! "Dagger" iA
+\dagger 
+endsnippet
+
+snippet binom "Binomial coefficient"
+\binom{$1}{$0}
+endsnippet
+
+snippet Binom "Large Binomial coefficient"
+\binom {$1}
+       {$0}
+endsnippet
+
+snippet ^ "Hat" w
+\hat{$0}
+endsnippet
+
+snippet ^w "Widehat" w
+\widehat{$0}
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])\^" "hat" r
+\hat{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])\^w" "widehat" rA
+\widehat{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet ^. "Dot"
+\dot{$0}
+endsnippet
+
+snippet ^- "Bar"
+\bar{$0}
+endsnippet
+
+snippet ^-- "Overline" i
+\overline{$0}
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])\^-" "bar" ri
+\overline{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])\^--" "overline" rA
+\overline{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet ^~~ "Widetilde" w
+\widetilde{$0}
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])\^~~" "wide tilde" rA
+\widetilde{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])\^~" "tilde" r
+\tilde{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet ^-> "Vector" w
+\vec{$0}
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])\^-\>" "vector" rA
+\vec{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "\:(\S+)-\|(\S+)\:" "Note over relation" irA
+\overset{`!p snip.rv = match.group(1)`}{`!p snip.rv = match.group(2)`}
+endsnippet
+
+snippet "\:(\S+)\|-(\S+)\:" "Note under relation" irA
+\underset{`!p snip.rv = match.group(2)`}{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "\:(\S+)\{\|(\S+)\:" "Note over bracket" irA
+\overbrace{`!p snip.rv = match.group(2)`}^{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "\:(\S+)\|\}(\S+)\:" "Note under bracket" irA
+\underbrace{`!p snip.rv = match.group(1)`}_{`!p snip.rv = match.group(2)`}
+endsnippet
+
+snippet ~ "asymptotic"
+\sim 
+endsnippet
+
+snippet ~- "equivalence" iA
+\simeq 
+endsnippet
+
+snippet )( "same order" 
+\asymp 
+endsnippet
+
+snippet ~= "congruence" iA
+\cong 
+endsnippet
+
+snippet -= "equivalence" iA
+\equiv 
+endsnippet
+
+snippet ! "Negation" i
+\not 
+endsnippet
+
+snippet stackr "Stacked relations" wA
+\stackrel{$1}{$0}
+endsnippet
+
+snippet [] "Bracket" iA
+[$0]
+endsnippet
+
+snippet {} "Curly" iA
+{$0}
+endsnippet
+
+snippet () "Parens" iA
+($0)
+endsnippet
+
+snippet -> "arrow" wA
+\rightarrow 
+endsnippet
+
+snippet => "thick arrow" iA
+\Rightarrow 
+endsnippet
+
+snippet <- "left arrow" 
+\leftarrow 
+endsnippet
+
+snippet <= "left thick arrow" 
+\Leftarrow 
+endsnippet
+
+snippet <-> "bi arrow" iA
+\leftrightarrow 
+endsnippet
+
+snippet <=> "bi arrow" iA
+\Leftrightarrow 
+endsnippet
+
+snippet --> "long arrow" iA
+\longrightarrow 
+endsnippet
+
+snippet <-- "long left arrow" i
+\longleftarrow 
+endsnippet
+
+snippet <--> "long bi arrow" iA
+\longleftrightarrow 
+endsnippet
+
+snippet ^| "up arrow" iA
+\uparrow 
+endsnippet 
+
+snippet v| "down arrow" iA
+\downarrow 
+endsnippet
+
+snippet v/ "sw arrow" wA
+\swarrow 
+endsnippet
+snippet ^\ "nw arrow" wA
+\nwarrow 
+endsnippet
+snippet ^/ "ne arrow" wA
+\nearrow 
+endsnippet
+snippet v\ "se arrow" wA
+\searrow 
+endsnippet
+
+snippet (-> "hook arrow" iA
+\hookrightarrow 
+endsnippet
+
+snippet <-) "hook arrow" iA
+\hookleftarrow 
+endsnippet
+
+snippet |-> "maps to" iA
+\mapsto 
+endsnippet
+
+snippet lim-> "direct limit" iA
+\varinjlim
+endsnippet
+
+snippet lim<- "inverse limit" iA 
+\varprojlim
+endsnippet
+
+snippet o/ "Empty set" wA
+\emptyset 
+endsnippet
+
+snippet "c([A-Z])" "math calligraphic" r
+\mathcal{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "f([A-Za-z])" "math fraktur" r
+\mf{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "scr([A-Z])" "math script" r
+\ms{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "m([A-Z])" "math blackboard" r
+\mathbb{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet "b([A-Za-z])" "math bold" r
+\mathbf{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet acton "Action" wA
+\curvearrowright 
+endsnippet
+
+snippet S "Series" w
+\sum
+endsnippet
+
+snippet S8 "Series with infinite upper bound" wA
+\sum_{$0}^{\infty}
+endsnippet
+
+snippet P "Product with finite bounds" w
+\prod
+endsnippet
+
+snippet P8 "Product with infinite upper bound" wA
+\prod_{$0}^{\infty}
+endsnippet
+
+snippet "(\w*)rot" "2x2 Rotation matrix" r
+\begin{`!p snip.rv = match.group(1)`matrix}
+	\cos{${1:\theta}}	&	\sin{$1} \\\\
+	-\sin{$1}	&	\cos{$1} \\\\
+\end{`!p snip.rv = match.group(1)`matrix}$0
+endsnippet
+
+snippet $$ "inline math mode" Aw
+\$ $1 \$
+$0
+endsnippet
+
+snippet !! "inline math mode" A
+\$$0\$
+endsnippet
+
+snippet "(\S+)!!" "inline math mode" Ar
+\$`!p snip.rv = match.group(1)`\$
+endsnippet
+
+snippet << "Asymptotically smaller" iA
+\ll
+endsnippet
+
+snippet >> "Asymptotically greater" iA
+\gg
+endsnippet
+
+snippet <> "small angle bracket" iA
+\langle $0 \rangle
+endsnippet
+
+snippet <.> "angle bracket" iA
+\left\langle 
+	$0 
+\right\rangle
+endsnippet
+
+snippet T "inline math text" w
+\textrm{$0}
+endsnippet
+
+snippet "T:(\S+)" "inline math text formatted" ir
+\textrm{ `!p snip.rv = match.group(1)` }
+endsnippet
+
+snippet "M:(\S+)" "inline math text formatted" ir
+\mathrm{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet class "Document class template"
+\documentclass[${1:11pt}]\{${2:article}\}
+endsnippet
+
+snippet packs "Inclusion of common packages in preamble"
+%────────────┤ Common packages for LaTeX documents ├───────────────────────────────────────────────╮
+                                                                                                  %│
+\usepackage {amsmath, amssymb, amsfonts, mathrsfs, amsthm, graphicx, hyperref, microtype}         %│
+                                                                                                  %│
+%──────────────────────────────────────────────────────────────────────────────────────────────────╯
+endsnippet
+
+snippet envs "user defined environments"
+%────────────┤ Environments ├───────────────────────────────────────────────╮
+                                                                           %│
+\newtheorem{${1:theorem}}{${2:Theorem}}[${3:section}]                      %│
+\theoremstyle{definition} \newtheorem{definition}  [$1] {Definition}       %│
+\theoremstyle{plain}      \newtheorem{lemma}       [$1] {Lemma}            %│
+\theoremstyle{plain}      \newtheorem{proposition} [$1] {Proposition}      %│
+\theoremstyle{remark}     \newtheorem{remark}      [$1] {Remark}           %│
+\theoremstyle{plain}      \newtheorem{corollary}   [$1] {Corollary}        %│
+\theoremstyle{remark}     \newtheorem{example}     [$1] {Example}          %│
+                                                                           %│
+%───────────────────────────────────────────────────────────────────────────╯
+$0
+endsnippet
+
+snippet thm "Theorem environment" b
+%
+\begin{theorem}
+\label{thm:$1}
+	$0
+\end{theorem}
+%
+endsnippet
+snippet Prop "Named proposition" b
+%
+\begin{proposition}[${1:${VISUAL:proposition name}}]
+\label{prop:${2:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+	$0
+\end{proposition}
+%
+endsnippet
+
+snippet Lem "Named lemma" b
+%
+\begin{lemma}[${1:${VISUAL:lemma name}}]
+\label{lem:${2:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+	$0
+\end{lemma}
+%
+endsnippet
+
+snippet Def "Named defintion" b
+%
+\begin{definition}[${1:${VISUAL:definition name}}]
+\label{def:${2:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+	$0
+\end{definition}
+%
+endsnippet
+
+snippet Cor "Named corollary" b
+%
+\begin{corollary}[${1:${VISUAL:corollary name}}]
+\label{cor:${2:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+	$0
+\end{corollary}
+%
+endsnippet
+
+snippet Thm "Named theorem" b
+%
+\begin{theorem}[${1:${VISUAL:Theorem name}}]
+\label{thm:${2:${1/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+	$0
+\end{theorem}
+%
+endsnippet
+
+snippet def "Definition environment" b
+%
+\begin{definition}
+	$0
+\end{definition}
+%
+endsnippet
+snippet rem "Remark environment" b
+%
+\begin{remark}
+	$0
+\end{remark}
+%
+endsnippet
+snippet cor "Corollary environment" b
+%
+\begin{corollary}
+	$0
+\end{corollary}
+%
+endsnippet
+snippet prop "Proposition environment" b
+%
+\begin{proposition}
+	$0
+\end{proposition}
+%
+endsnippet
+snippet lem "Lemma environment" b
+%
+\begin{lemma}
+	$0
+\end{lemma}
+%
+endsnippet
+snippet exam "Example environment" b
+%
+\begin{example}
+	$0
+\end{example}
+%
+endsnippet
+
+snippet plain "Plain document template" b
+\documentclass[11pt]{article}
+
+\usepackage{./build/standard}
+
+\title{$1}
+\author{$2}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+$3
+\end{abstract}
+
+\section{${4:${VISUAL:section name}}}%
+\label{sec:${5:${4/\\\w+\{(.*?)\}|\\(.)|(\w+)|([^\w\\]+)/(?4:_:\L$1$2$3\E)/ga}}}
+
+$0
+
+\nocite{*}
+\bibliography{${6:`!p snip.rv = snip.basename`}}
+\bibliographystyle{plain}
+\end{document}
+endsnippet
+
+snippet problemdoc "Problem template" b
+\documentclass[11pt]{article}
+
+%---Common packages--- 
+
+\usepackage{amsmath, amssymb, amsfonts, mathrsfs, amsthm}
+
+\usepackage[backend=bibtex,style=verbose-trad2]{biblatex}
+
+%---User defined environments-------------
+
+\newtheorem{theorem}{Theorem}[section]
+\theoremstyle{plain}      \newtheorem{lemma}       [theorem] {Lemma}
+\theoremstyle{plain}      \newtheorem{proposition} [theorem] {Proposition}
+\theoremstyle{plain}      \newtheorem{corollary}   [theorem] {Corollary}
+\theoremstyle{remark}     \newtheorem{example}     [theorem] {Example}
+\theoremstyle{remark}     \newtheorem{remark}      [theorem] {Remark}
+\theoremstyle{definition} \newtheorem{definition}  [theorem] {Definition}
+\theoremstyle{definition} \newtheorem*{problem}  {$1}
+\theoremstyle{definition} \newtheorem*{solution} {Solution}
+
+\title  {$2}
+\author {$3}
+
+\begin{document}
+\maketitle
+\begin{problem}
+	$4
+\end{problem}
+\begin{solution}
+	$5
+\end{solution}
+$0
+\end{document}
+endsnippet
+
+snippet proof "Standard proof environment from amsthm" b
+\begin{proof}
+	$0
+\end{proof}
+endsnippet
+
+snippet fq "Quadratic polynomial"
+${1:a}${2:x}^2 ${3:+b}$2 ${0:+c}
+endsnippet
+
+snippet eq "Simple equation environment" b
+%
+\begin{equation*}
+	$0
+\end{equation*}
+%
+endsnippet
+snippet eqn "Labeled equation environment" bA
+%
+\begin{equation}
+\label{eq:$1}
+	$0
+\end{equation}
+%
+endsnippet
+
+snippet ald "Aligned sub-environment for equation" bA
+\begin{aligned}
+	$0
+\end{aligned}
+endsnippet
+
+snippet == "Unaligned equation item" bA
+${1/./ /ga} ${2:EQ_LEFT}
+${1:=} ${0:EQ_RIGHT}
+endsnippet
+
+snippet spl "Split"
+\begin{split}
+   ${1:SP_LEFT} &${2:SEPARATOR}
+\\\\ ${0:SP_RIGHT} &$2
+\end{split}
+endsnippet
+
+snippet al "Simple equation alignment environment" b
+%
+\begin{align*}
+	$0
+\end{align*}
+%
+endsnippet
+
+snippet alnit "Equation alignment item" A
+\label{eq:$1}
+${2/./ /ga}  ${3:AL_LEFT}
+&$2 ${0:AL_RIGHT} \\\\
+endsnippet
+
+snippet aln "Labeled equation alignment environment" b
+%
+\begin{align}
+	$0
+\end{align}
+%
+endsnippet
+
+snippet alit "Simple equation alignment item" A
+${1/./ /ga}  ${2:AL_LEFT}
+&$1 ${0:AL_RIGHT}
+\\\\
+endsnippet
+
+snippet eqs "Unaligned bunch of equations" bA
+%
+\begin{gather*}
+	$0
+\end{gather*}
+%
+endsnippet
+
+snippet commtr "Commutative triangle, right aligned" A
+\begin{tikzcd}
+	$1
+		\arrow{r}        {$4}
+		\arrow[swap]{dr} {$6}     &
+	$2	
+		\arrow{d}        {$5}\\\\ &
+	$3
+\end{tikzcd}$0
+endsnippet
+
+snippet commtrc "Commutative triangle, center aligned" A
+\begin{tikzcd}
+	$1
+		\arrow{rr}       {$4}
+		\arrow[swap]{dr} {$6}     &&
+	$2
+		\arrow{dl}       {$5}\\\\ &
+	$3
+\end{tikzcd}$0
+endsnippet
+
+snippet commsq "Commutative square, simple" A
+\begin{tikzcd}
+	$1
+		\arrow{r}       {$5}
+		\arrow[swap]{d} {$6} &
+	$2
+		\arrow{d}       {$7}\\\\
+	$3
+		\arrow{r}       {$8} &
+	$4
+\end{tikzcd}$0
+endsnippet
+
+post_expand "vim.eval('timer_start(0, \"MyHandler\")')"
+snippet eqref "Equation Reference"
+\eqref{$0}
+endsnippet
+
+post_expand "vim.eval('timer_start(0, \"MyHandler\")')"
+snippet eqr "Equation Reference"
+\eqref{$0}
+endsnippet
+
+post_expand "vim.eval('timer_start(0, \"MyHandler\")')"
+snippet ref "Reference"
+\ref{$0}
+endsnippet
+post_expand "vim.eval('timer_start(0, \"MyHandler\")')"
+
+snippet cite "Citation"
+\cite{$0}
+endsnippet
+
+snippet / "Fraction" b
+\frac{ ${1:NUMERATOR} }
+     { ${0:DENOMINATOR} }
+endsnippet
+
+snippet " /" "Fraction" r
+\frac{ $1 }{ $0 }
+endsnippet
+
+snippet cf "Continued fraction" w
+\cfrac{1}
+  {$1 +
+cf$0
+  }
+endsnippet
+
+snippet cff "Continued fraction general" w
+\cfrac{${1:1}}
+  {$2 +
+cff$0
+  }
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$\-]?[^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])/([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])" "frac" ir
+\frac{`!p snip.rv = match.group(1)`}{`!p snip.rv = match.group(2)`}
+endsnippet
+
+snippet mod "Equivalence modulo X"
+$1 \equiv $2 \pmod{$0}
+endsnippet
+
+snippet root "Root"
+\sqrt[$1]{$0}
+endsnippet
+
+snippet "([^ \t\n\r\f\v\$]*[^ \t\n\r\f\v\$\({[])\^rt" "Square root" r
+\sqrt{`!p snip.rv = match.group(1)`}
+endsnippet
+
+snippet __ "Autoindexing" iA
+_{$0}
+endsnippet
+
+snippet ^^ "Autoexponentiation" iA
+^{$0}
+endsnippet
+
+snippet del "Laplace" w
+\Delta 
+endsnippet
+
+snippet grad "Gradient" w
+\nabla 
+endsnippet
+
+snippet sqr "Square" w
+\square 
+endsnippet
+
+snippet beamer "Beamer presentation" b
+\documentclass[${1:pdf}]{beamer}
+\mode<presentation>{\usetheme{${2:metropolis}}}
+
+%────────────┤ Environments ├──────────────────────────────────────────────────────────────────────╮
+                                                                                                  %│
+\newtheorem{${1:theorem}}{${2:Theorem}}[${3:section}]                                             %│
+\theoremstyle{definition} \newtheorem{definition}  [$1] {Definition}                              %│
+\theoremstyle{plain}      \newtheorem{lemma}       [$1] {Lemma}                                   %│
+\theoremstyle{plain}      \newtheorem{proposition} [$1] {Proposition}                             %│
+\theoremstyle{remark}     \newtheorem{remark}      [$1] {Remark}                                  %│
+\theoremstyle{plain}      \newtheorem{corollary}   [$1] {Corollary}                               %│
+\theoremstyle{remark}     \newtheorem{example}     [$1] {Example}                                 %│
+                                                                                                  %│
+%──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+%───────────────────────────────┤ Help with Beamer ├───────────────────────────────────────────────╮
+%                                                                                                 %│
+% \begin{block} for boxes;                                                                        %│
+% theorems, propositions, definitions etc. are preloaded and do not need to be declared;          %│
+% \beamerbutton{} : for basic buttons;                                                            %│
+% \hyperlink{}    : for jumping to labeled environments                                           %│
+% <start-end>     : for delayed material                                                          %│
+% \uncover<>{} and \only<>{} : for hiding objects                                                 %│
+% \onslide<> : for revealing parts of table                                                       %│
+% \begin{columns}, \begin{column}{x\textwidth} : for columns                                      %│
+% In figure environment,                                                                          %│
+%	\includemovie[poster=FILE,text={text}]{dimx}{dimy}{FILE}                                      %│
+%                                                                                                 %│
+%──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+%────────────┤ Common packages for LaTeX documents ├───────────────────────────────────────────────╮
+                                                                                                  %│
+\usepackage {amsmath, amssymb, amsfonts, mathrsfs, amsthm, graphicx, hyperref, microtype, tikz,   %│
+             tikz-cd}                                                                             %│
+                                                                                                  %│
+%──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+\title  {$9}
+\author {$10}
+
+\begin{document}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\begin{frame}
+
+$0
+
+\end{frame}
+
+%\begin{frame}{Bibliography}
+%\nocite{*}
+%\bibliography      {${13:`!p snip.rv = snip.basename`}}
+%\bibliographystyle {${14:amsalpha}}
+%\end{frame}
+\end{document}
+endsnippet
+
+snippet bare "Barebones template" b
+\documentclass[10pt]{article}
+
+%────────────┤ Common packages ├───────────────────────────────────────────────────────────────────╮
+                                                                                                  %│
+\usepackage{                                                                                      %│
+    amsmath, amssymb, amsfonts, mathrsfs, amsthm,                                                 %│
+    graphicx, hyperref, microtype, tikz, tikz-cd,                                                 %│
+}                                                                                                 %│
+                                                                                                  %│
+%──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+%────────────┤ Environments ├──────────────────────────────────────────────────────────────────────╮
+                                                                                                  %│
+\newtheorem{theorem}}{Theorem}[section]                                                           %│
+\theoremstyle{definition} \newtheorem{definition}  [theorem] {Definition}                         %│
+\theoremstyle{plain}      \newtheorem{lemma}       [theorem] {Lemma}                              %│
+\theoremstyle{plain}      \newtheorem{proposition} [theorem] {Proposition}                        %│
+\theoremstyle{remark}     \newtheorem{remark}      [theorem] {Remark}                             %│
+\theoremstyle{plain}      \newtheorem{corollary}   [theorem] {Corollary}                          %│
+\theoremstyle{remark}     \newtheorem{example}     [theorem] {Example}                            %│
+                                                                                                  %│
+%──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+\author {Author}
+\title  {Title}
+
+\begin{document}
+\maketitle
+$0
+\end{document}
+endsnippet
+
+snippet texnote "Tex note template for ./texnotes" b
+\documentclass[10pt]{amsart}
+\input{note.sty}
+\title{Note}
+\date{`!p from datetime import datetime snip.rv=datetime.now().strftime("%Y-%m-%d %H:%M:%S%z")`}
+
+%---Document---
+\begin{document}
+\maketitle
+$0
+\end{document}
+endsnippet
+
+snippet note "Note template" b
+\documentclass[10pt]{amsart}
+
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amsthm,amssymb,amsfonts,mathrsfs,kpfonts}
+
+\newtheorem{theorem}{Theorem}[section]
+\theoremstyle{plain}      \newtheorem{lemma}       [theorem] {Lemma}
+\theoremstyle{plain}      \newtheorem{proposition} [theorem] {Proposition}
+\theoremstyle{plain}      \newtheorem{corollary}   [theorem] {Corollary}
+\theoremstyle{remark}     \newtheorem{example}     [theorem] {Example}
+\theoremstyle{remark}     \newtheorem{remark}      [theorem] {Remark}
+\theoremstyle{definition} \newtheorem{definition}  [theorem] {Definition}
+
+\title{Note}
+\date{`!p from datetime import datetime snip.rv=datetime.now().strftime("%Y-%m-%d %H:%M:%S%z")`}
+%---Document---
+\begin{document}
+\maketitle
+$0
+\end{document}
+endsnippet
+
+# Tikz snippets
+snippet tikz "Tikz picture"
+\begin{tikzpicture}
+$0
+\end{tikzpicture}
+endsnippet
+
+snippet draw "Generic draw"
+\draw[$1] ${2:(0,0)} ${3:--} ${4:(5,5)}
+endsnippet
+
+snippet grid "Assist grid"
+\draw[step=${1:1cm},${2:gray},${3:very thin}] ${4:(0,0)} grid ${5:(5,5)};
+endsnippet
+
+snippet circle "Circle"
+\draw[${1:black},${2:thick}] (0,0) circle (2cm);
+endsnippet
+
+snippet node "Node"
+\node (${1:LABEL}) [${2:STYLE}] \{${3:TEXT}\};
+endsnippet
+
+snippet flowchart "Flowchart" b
+\begin{tikzpicture}[node distance=${1:2cm}]
+$2
+\end{tikzpicture}
+endsnippet
+
+snippet flowstyles "Flowchart styles" b
+\usetikzlibrary{shapes.geometric, arrows}
+\tikzstyle{boxred}   = [rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=red!10   ]
+\tikzstyle{boxgreen} = [rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=green!10 ]
+\tikzstyle{boxblue}  = [rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=blue!10  ]
+\tikzstyle{ellred}   = [ellipse,   rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=red!10   ]
+\tikzstyle{ellgreen} = [ellipse,   rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=green!10 ]
+\tikzstyle{ellblue}  = [ellipse,   rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=blue!10  ]
+\tikzstyle{arrow}    = [thick, ->, >=stealth]
+endsnippet
+
+snippet fancybox
+%────────────┤ Title ├─────────────────────────────────────────────────────────────────────────────╮
+                                                                                                  %│
+                                                                                                  %│
+                                                                                                  %│
+                                                                                                  %│
+                                                                                                  %│
+                                                                                                  %│
+%──────────────────────────────────────────────────────────────────────────────────────────────────╯
+endsnippet
+
+snippet basker "Configure good baskeville font" b
+%────────────┤ Baskerville Fonts ├─────────────────────────────────────────────────────────────────╮
+                                                                                                  %│
+\usepackage{anyfontsize}                                                                          %│
+\usepackage{lmodern}                                                                              %│
+\usepackage[scale=0.89]{tgheros}                                                                  %│
+\usepackage[osf]{Baskervaldx}                                                                     %│
+\usepackage[baskervaldx,cmintegrals,bigdelims,vvarbb]{newtxmath}                                  %│
+\usepackage[cal=boondoxo]{mathalfa}                                                               %│
+                                                                                                  %│
+%──────────────────────────────────────────────────────────────────────────────────────────────────╯
+endsnippet
+
+snippet schola "Configure good schoolbook font" b
+%────────────┤ Schoolbook fonts ├──────────────────────────────────────────────────────────────────╮
+                                                                                                  %│
+\usepackage{unicode-math}                                                                         %│
+\usepackage{anyfontsize}                                                                          %│
+\setmainfont[Scale=0.90]{TeX Gyre Schola}                                                         %│
+\setmathfont[Scale=0.90]{TeX Gyre Schola Math}                                                    %│
+                                                                                                  %│
+%──────────────────────────────────────────────────────────────────────────────────────────────────╯
+endsnippet
+
+snippet palat "Configure good palatino font" b
+%────────────┤ Palatino fonts ├────────────────────────────────────────────────────────────────────╮
+                                                                                                  %│
+\usepackage[T1]{fontenc}                                                                          %│
+\usepackage{palatino}                                                                             %│
+\usepackage{mathpazo}                                                                             %│
+                                                                                                  %│
+%──────────────────────────────────────────────────────────────────────────────────────────────────╯
+endsnippet
+
+snippet libertine "Configure good libertine font" b
+%────────────┤ Title ├─────────────────────────────────────────────────────────────────────────────╮
+                                                                                                  %│
+\usepackage[T1]{fontenc}                                                                          %│
+\usepackage{fontspec}                                                                             %│
+\usepackage{libertine}                                                                            %│
+\usepackage[libertine]{newtxmath}                                                                 %│
+                                                                                                  %│
+%──────────────────────────────────────────────────────────────────────────────────────────────────╯
+endsnippet
+
+snippet century "Configure good century font" b
+%────────────┤ Title ├─────────────────────────────────────────────────────────────────────────────╮
+                                                                                                  %│
+\usepackage[scale=0.89]{tgheros}                                                                  %│
+\usepackage{newcent}                                                                              %│
+\usepackage[nc,cmintegrals,bigdelims,vvarbb]{newtxmath}                                           %│
+\usepackage[cal=boondoxo]{mathalfa}                                                               %│
+                                                                                                  %│
+%──────────────────────────────────────────────────────────────────────────────────────────────────╯
+endsnippet
+
+snippet Re "Real part"
+\Re{$0}
+endsnippet
+
+snippet Im "Imaginary part"
+\Im{$0}
+endsnippet
+
+snippet bx "Box times"
+\boxtimes
+endsnippet
+
+snippet b+ "Box plus"
+\boxplus
+endsnippet
+
+snippet uu "cup" wA
+\cup 
+endsnippet
+
+snippet UU "Bic cup" wA
+\bigcup 
+endsnippet
+
+snippet cc "cup" wA
+\cap 
+endsnippet
+
+snippet CC "Bic cup" wA
+\bigcap 
+endsnippet
+
+snippet ii "in" wA
+\in 
+endsnippet
+
+snippet "([A-Za-z]+)@@" "Autoformatting common functions" rA
+\\`!p snip.rv = match.group(1)`{$0}
+endsnippet
+
+snippet "(\S+)\)\)" "Autoformatting parens" rA
+(`!p snip.rv = match.group(1)`)$0
+endsnippet
+
+snippet "([A-Za-z]+)@(\w)" "Autoformatting common functions" rA
+\\`!p snip.rv = match.group(1)`{`!p snip.rv = match.group(2)`}
+endsnippet
+
+snippet exact "Exact sequence" b
+0  \rightarrow  $1
+   \rightarrow  $2
+   \rightarrow  $3
+   \rightarrow  0$0
+endsnippet
+
+snippet M "mathrm" i
+\mathrm{$0}
+endsnippet
+
+snippet newop "Declare math operator" bA
+\DeclareMathOperator{$1}{$0}
+endsnippet
+
+snippet lis "Formatted horizontal array of entries" w
+( ${1:A1}, \ldots , ${0:AN} )
+endsnippet
+
+snippet |||| "Inline norm"
+\Vert $0 \Vert
+endsnippet
+
+snippet != "neq" iA
+\neq 
+endsnippet
+
+snippet "[ ]+_" "connect subscript" Ar
+_
+endsnippet
+
+snippet "[ ]+^" "connect superscript" Ar
+^
+endsnippet
+
+snippet "([A-Za-z]+)\\" "Make into command" r
+\\`!p snip.rv = match.group(1)`
+endsnippet

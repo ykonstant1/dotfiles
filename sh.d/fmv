@@ -1,0 +1,25 @@
+#!/bin/sh
+#
+# Usage: fmv 'PATTERN' DIRECTORY
+# 	Move all normal files in the current directory that match the
+# 	`find` PATTERN to DIRECTORY non-recursively.
+#
+# 	Warning: do not forget to quote PATTERN if it contains glob
+# 	characters.
+#
+
+errorx() { printf 'Error: %s\n' "${*:-"unknown error."}" >&2 ; exit 1 ;}
+
+if [ 2 -eq "$#" ]; then
+	if [ -d "$2" ] && [ -w "$2" ]; then
+		command find ./ ! -name . -prune -type f -name "$1"        \
+		  ! -exec test -f "${2%/}/"{}                           \; \
+		    -exec printf '%s\n' "Moving file '{}' to folder $2" \; \
+		    -exec mv -- {} "$2"                                 \; ;
+	else
+		errorx "invalid or inaccessible directory."
+	fi
+else
+	errorx "invalid number of arguments."
+fi
+exit

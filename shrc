@@ -1,0 +1,128 @@
+# shellcheck disable=SC2164  # cd is handled
+# shellcheck disable=SC2142  # not an error
+# shellcheck disable=SC2059  # these variables are part of fmtstr
+# shellcheck disable=SC2016  # we don't want the code to be run at definition
+
+# UUID to check if this file has been sourced
+export SHRC_UUID='56751b2a-c93f-4b80-a324-c49574eea33b'
+
+# color definitions and control codes
+export undo='\033[0m'
+export reset='\033[0m'
+
+export red='\033[31m'
+export green='\033[32m'
+export blue='\033[34m'
+
+export bold='\033[1m'
+export cross='\033[9m'
+export ital='\033[3m'
+export over='\033[53m'
+export under='\033[4m'
+
+export B='\033[1m'
+export R='\033[0m'
+
+# RGB foreground and background
+rgb()  { printf "\033[38;2;${1};${2};${3}m"; }
+rgbb() { printf "\033[48;2;${1};${2};${3}m"; }
+
+# 256 color fore/back ground
+colf() { printf "\033[38;5;${1}m"; }
+colb() { printf "\033[48;5;${1}m"; }
+
+# append to PATH
+append_path() {
+	test -d "$1" || return 1
+	case ":${PATH}:" in
+		*:"$1":*) :                  ;;
+		*) PATH="${PATH:+$PATH:}$1"  ;;
+	esac
+}
+
+# set envars
+append_path "${HOME}/.sh.d"
+export PATH
+export TMPDIR='/tmp'
+export EDITOR='vim'
+export nl='
+'
+export tab='	'
+export tb='	'
+export sp=' '
+export DEFAULT_IFS="${sp}${tb}${nl}"
+export FZF_DEFAULT_COMMAND='rg --files --hidden --follow'
+export TERM=xterm-256color
+export XDG_CONFIG_HOME="${HOME}/.config"
+export XDG_CACHE_HOME="${HOME}/.cache"
+export now='date +"%d_%b_%y__%H:%M:%S"'
+export DEBUG=false
+
+TTY=$(tty)
+export TTY
+
+# error handing primitive; invoke via `die` alias
+fatal_string="${bold}Fatal error [${red}%s${reset}${bold}] on line ${green}%s${reset}${bold} in '${blue}%s${reset}${bold}':${reset} %s\n"
+__errex() {
+	printf "${fatal_string}"               \
+		"${1:-"?"}"                        \
+		"${2:-"?"}"                        \
+		"${3:-"undetermined script"}"      \
+		"${4:-"undetermined error"}" >&2   ;
+	exit "${1:-1}"
+}
+
+# debug handling primitive; invoke via `debug` alias
+__debug() {
+	"${DEBUG}" &&
+	printf 'Debug line %s in '"'"'%s'"'"': %s\n' \
+		"${1:-"?"}"                              \
+		"${2:-"undetermined script"}"            \
+		"${3:-"(empty debug message)"}" >&2      ;
+}
+
+# message handling primitive; invoke via `msg|warn` alias
+message_string="${bold}[${reset}${blue}%s${reset}:%s${bold}]${reset} ${bold}%s:${reset} %s\n"
+__message() {
+	printf "${message_string}"   \
+		"${2:-"script"}"         \
+		"${3:-"?"}"              \
+		"${1:-"message"}"        \
+		"${4:-"(empty $1)"}" >&2 ;
+}
+
+# error message primitive; invoke via `error` alias
+error_string="${bold}[${reset}${blue}%s${reset}:%s${bold}]${reset} ${bold}%s[${red}${bold}%s${reset}${bold}]:${reset} %s\n"
+__error() {
+	printf "${error_string}"        \
+		"${2:-"script"}"            \
+		"${3:-"?"}"                 \
+		"${1:-"error"}"             \
+		"${4:-"?"}"                 \
+		"${5:-"(empty error)"}" >&2 ;
+}
+
+# suppress output, get only error code
+quiet() { "$@" >/dev/null 2>&1 ;}
+ok()    { "$@" >/dev/null 2>&1 ;}
+
+# suppress error code, get only output
+noerr() { "$@" 2>/dev/null || : ;}
+
+# printf shortcuts
+out() { printf '%s\n' "$@" ;}
+raw() { printf '%s\n' "$*" ;}
+
+alias die='__errex "$?" "${LINENO}" "$0"'
+alias debug='__debug "${LINENO}" "$0"'
+alias msg='__message message "$0" "${LINENO}"'
+alias warn='__message warning "$0" "${LINENO}"'
+alias error='__error error "$0" "${LINENO}" "$?"'
+alias scr='screenkey -g 400x400+1500+600'
+alias sx='startx'
+alias bb='bc -l <<X'
+
+set_control_escape() {
+	setxkbmap -option ctrl:nocaps  # turn CapsLock into Ctrl
+	xcape -e 'Control_L=Escape'    # turn tapping Ctrl into Escape
+}

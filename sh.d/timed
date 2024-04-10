@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+#    Usage: timed TIMES COMMAND
+#        Repeat COMMAND TIMES times and calculate clock time with accuracy
+#        roughly in seconds.
+
+if ! [ 0 -lt "$1" ]; then
+	printf '%s\n' "First argument must be a positive integer." >&2
+	exit 1
+fi
+
+epoch="$(get_epoch)"
+times="$1"
+shift
+
+repeat "${times}" "$@" >/dev/null 2>&1
+printf '%s\n' "$(($(get_epoch) - epoch))"

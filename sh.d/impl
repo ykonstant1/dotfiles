@@ -1,0 +1,33 @@
+#!/bin/sh
+#
+# Usage: impl [SCRIPT := impl]
+#		Print the source code for SCRIPT if available.
+
+errex() { printf '%s\n' "$@" >&2; exit 1; }
+
+if ! command -v command >/dev/null 2>&1; then
+	errex "\`command -v\` is not available."
+fi
+
+full="$(command -v "${1:-"impl"}")"
+
+if [ -z "${full}" ]; then
+	errex "\`command -v\` did not find script."
+elif ! [ -f "${full}" ]; then
+	errex "\`command -v\` returned invalid file."
+elif ! [ -r "${full}" ]; then
+	errex "Script not readable."
+fi
+
+ftype="$(file -- "${full}")"
+
+test "${ftype#*"text"}" = "${ftype}" &&
+	errex "\`command -v\` did not return a text file."
+
+if command -v bat >/dev/null 2>&1; then
+	bat --theme Coldark-Cold --style full -- "${full}"
+else
+	cat -- "${full}"
+fi
+
+exit

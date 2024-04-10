@@ -1,0 +1,18 @@
+#!/bin/sh
+#
+# Usage: udate
+# 	Print verbose date relative to UTC.
+
+\read -r dname dnum mon yer tim <<-EDAT
+	$(\date -u "+%A %e %B %Y %H:%M:%S")
+EDAT
+
+case "${dnum}" in
+	1|21|31) suf="st" ;;
+	   2|22) suf="nd" ;;
+	   3|23) suf="rd" ;;
+	      *) suf="th" ;;
+esac
+
+\printf '%s, %s%s of %s %s, %s UTC.\n' \
+	"${dname}" "${dnum}" "${suf}" "${mon}" "${yer}" "${tim}"

@@ -1,0 +1,226 @@
+priority 0
+
+snippet copyright "Copyright notice and license" b
+# © `date +%Y` [COPYRIGHT HOLDER]. All rights reserved.
+#
+# This program is free software: you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation, either version 3 of
+# the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public
+# License along with this program. If not, see
+# <https://www.gnu.org/licenses/>.
+endsnippet
+
+snippet [ "test in bracket mode"
+[ ${1:${VISUAL:condition}} ]
+endsnippet
+
+snippet $( "Subshell" iA
+\$( $0 )
+endsnippet
+
+snippet (( "arithmetic expression" iA 
+"\$(( $0 ))"
+endsnippet
+
+snippet "(\w+)\$\$" "variable" rA
+"\$\{`!p snip.rv = match.group(1)`\}"
+endsnippet
+
+snippet "(\w+)@\$" "expanded variable" rA
+\$\{`!p snip.rv = match.group(1)`\}
+endsnippet
+
+snippet $$ "variable" A
+"\$\{$0\}"
+endsnippet
+
+snippet @$ "expanded variable" iA
+\$\{$0\}
+endsnippet
+
+snippet "(\w+)@@" "function" rA
+`!p snip.rv = match.group(1)`()
+{
+	$0
+}
+endsnippet
+
+snippet date "Date format" w
+date +"Date: %A, %d of %B, %Y. Time: %T %Z."
+endsnippet
+
+snippet << "Heredoc" iA
+<<-'${1:${VISUAL}}'
+	$0
+$1
+endsnippet
+
+snippet ?? "Ternary expression" A
+\$(( ${1:CONDITION} ? ${2:TRUE} : ${3:FALSE} ))$0
+endsnippet
+
+snippet find "Find template" b
+find -H "${1:${VISUAL:\${PWD}}}" \
+     ${2:! -name "$1"} \
+     -${3:DEPTH_OR_PRUNE} \
+     -type "${4:FILETYPE}" \
+     -path "${5:PATH_PATTERNS}" \
+     -name "${6:FILE_PATTERNS}" \
+     -o -name "${7:$2}" \
+     ! -name "${8:NEG_PATTERNS}" \
+     -perm "${9:MODES}" \
+     -user "${10:USERNAME}" -group "${11:GROUPNAME}" \
+     -size "${12:BLOCKS_OR_cHARS}" \
+     -atime "${13:ACCESS_TIME_AFTER_INIT}" \
+     -ctime "${14:CHANGE_TIME_AFTER_INIT}" \
+     -mtime "${15:MODIF_TIME_AFTER_INIT}" \
+     -newer "${16:COMPARISON_FILE}" \
+     -links "${17:NUMBER_OF_LINKS}" \
+     -exec "${18:SINGLE_EXEC}" \; \
+     -exec "${19:BATCH_EXEC}" {} + \
+     -print ;
+endsnippet
+
+snippet ps "ps template" b
+ps \
+   -a "${1:ALL_TERMINAL_PROCS}" \
+   -A "${2:ALL_PROCS}" \
+   -U "${3:USERLIST}" \
+   -G "${4:GROUPLIST}" \
+   -p "${5:PROCIDLIST}" \
+   -t "${6:TERMINALLIST}" \
+   -o ${0:PSOUT} ;
+endsnippet
+
+snippet psout "ps output entries"
+"pid user group tty time etime nice pcpu vsz cmd"
+endsnippet
+
+snippet stdin "stdin" w
+/dev/stdin
+endsnippet
+
+snippet stdout "stdout" w
+/dev/stdout
+endsnippet
+
+snippet stderr "stderr" w
+/dev/stderr
+endsnippet
+
+snippet >x "redirect to dev/null" w
+>/dev/null
+endsnippet
+
+snippet >> "redirect stderr to out"
+2>&1
+endsnippet
+
+snippet >>x "trash outputs"
+>/dev/null 2>&1
+endsnippet
+
+snippet '' "single quotes" A
+'$0'
+endsnippet
+
+snippet "" "double quotes" A
+"$0"
+endsnippet
+
+snippet "([^=\s]+)''" "single quotes" Ar
+'`!p snip.rv = match.group(1)`'
+endsnippet
+
+snippet "([^=\s]+)\"\"" "double quotes" Ar
+"`!p snip.rv = match.group(1)`"
+endsnippet
+
+snippet XP "Excise variable prefix"
+"\$\{${VISUAL}##*${0:PRESUF}\}"
+endsnippet
+
+snippet XS "Excise variable suffix"
+"\$\{${VISUAL}%%${0:SUFPRE}*\}"
+endsnippet
+
+snippet ifi "small one-line if" A
+if ${1:CONDITION}; then ${0:ACTION}; fi
+endsnippet
+
+snippet csc "small one-line case" A
+case ${1:VARIABLE} in ${2:PATTERN}) ${0:ACTION};; esac
+endsnippet
+
+snippet "(\w+):\((.+)\)->\((.+)\)" "simple case" r
+case "\$\{`!p snip.rv = match.group(1)`\}" in `!p snip.rv = match.group(2)`) `!p snip.rv = match.group(3)` ;; 
+endsnippet
+
+snippet while "while loop" b
+while ${1:CONDITIONAL};
+do
+	$0
+done
+endsnippet
+
+snippet for "for loop" b
+for ${1:VARNAME} in ${2:ARRAY};
+do
+	$0
+done
+endsnippet
+
+snippet if "if clause" b
+if ${1:CONDITION};
+then
+	${2:ACTION}
+fi
+endsnippet
+
+snippet case "case clause" b
+case ${1:VARIABLE} in
+	${2:PATTERN}) ${3:ACTION} ;;
+esac
+endsnippet
+
+snippet usage "Docopt compatible usage function" b
+usage()
+{
+cat <<-USAGESTRING
+${1:UTILITY_NAME}
+
+Usage:
+  ${2:$1} new <name>...
+  ${3:$1} [-s <knots>] ship <name> move <x> <y> 
+  ${4:$1} -h|-u
+  ${5:$1} -v
+
+Options:
+  -h|-u         Show this screen and exit.
+  -v            Print version and exit.
+  -s knots      Speed in knots [default: 10].
+USAGESTRING
+}
+endsnippet
+
+snippet getopts "getopts pattern" b
+while getopts ":e:huv" option
+do
+	case "${option}" in
+	e)   echo "$OPTARG"          ;;
+	h|u) echo usage ; exit       ;;
+	v)   echo version 1.0 ; exit ;;
+	:)   echo 'missing argument' ;;
+	?)   exit 1                  ;;
+	esac
+done
+shift "$((OPTIND - 1))"
+endsnippet

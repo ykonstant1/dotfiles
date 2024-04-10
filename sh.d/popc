@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# Usage : popc BINARY_STRING
+#   Silly popcount to demonstrate a use of IFS that can bite you if
+#   you do not quote all the variables you don't want to split.
+{
+binv="$(printf '%s' "${1}" | tr -c 1 0)"
+binc="${#binv}"
+count() { printf '%s\n' "$((binc + 1 - $#))" ;}
+saved="${IFS}"
+IFS=0
+count 1${binv}1
+IFS="${saved}"
+}
+# We do not run the code in a subshell to forget IFS because popcount
+# needs to be highly efficient (≖ ᴗ ≖ )

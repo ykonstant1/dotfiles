@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# Usage: djvu2pdf FILE
+# 	Convert FILE from djvu to pdf format.
+
+dt="$(\date "+%a-%d.%b.%Y-%H.%M.%S.%Z")"
+f="$1"
+noext="${f%".djvu"}"
+
+if [ -f "${noext}.pdf" ]; then
+	printf '%s\n' "PDF document of the given file already exists." >&2
+	exit 1
+fi
+
+ddjvu -format=pdf "$f" "${noext}.pdf" 2>> "djvu2pdf.errors.${dt}"
+
+if [ 0 -ne "$?" ]; then
+	printf '%s\n' "Exiting with errors; logged in ./djvu2pdf.errors.${dt}" >&2
+	exit 1
+fi
+exit

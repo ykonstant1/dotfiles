@@ -1,15 +1,22 @@
-" Yiannis's Vim Colorscheme adapted from Christian Habermann's habilight scheme,
-" itself adapted from nuvola.vim colorshceme by Dr. J. Pfefferl.
-"
-" Author: Ioannis Konstantoulas.
+" Vim color file
+" A version of nuvola.vim colorscheme, original by Dr. J. Pfefferl
+" I changed some colors and added some highlights for C and Vim 7
 
+" vim: tw=0 ts=4 sw=4
+" Maintainer:  Christian Habermann
+" Email:       christian( at )habermann-net( point )de
+" Version:     1.2
+" History:     1.2: nicer colors for paren matching
+"              1.1: Vim 7 support added (completion, spell checker, paren, tabs)
+"              1.0: initial version
+"
 " Intro {{{1
 set background=light
 hi clear
 if exists("syntax_on")
   syntax reset
 endif
-let g:colors_name = "habiMath"
+let g:colors_name = "habiShell"
 
 " Normal {{{1
 hi Normal ctermfg=black ctermbg=NONE guifg=black guibg=#F9F5F9
@@ -58,7 +65,7 @@ hi VisualNOS term=reverse ctermfg=yellow ctermbg=grey gui=UNDERLINE guifg=Black 
 
 " Syntax group {{{1
 hi Comment term=BOLD ctermfg=darkgray guifg=darkcyan
-hi Constant term=UNDERLINE ctermfg=red guifg=#B91F49
+hi Constant term=UNDERLINE ctermfg=cyan guifg=#B91F49
 hi Error term=REVERSE ctermfg=15 ctermbg=9 guibg=Red guifg=White
 hi Identifier term=UNDERLINE ctermfg=Blue guifg=Blue
 hi Number   term=UNDERLINE ctermfg=red gui=NONE guifg=#00C226
@@ -115,9 +122,9 @@ if v:version >= 700
 endif 
 
 " Completion {{{1
-highlight Pmenu      ctermbg=13  guifg=Black   guibg=#BDDFFF
-highlight PmenuSel   ctermbg=7   guifg=Black   guibg=Orange
-highlight PmenuSbar  ctermbg=7   guifg=#CCCCCC guibg=#CCCCCC
+highlight Pmenu      ctermbg=11  guifg=Black   guibg=#BDDFFF
+highlight PmenuSel   ctermbg=3   guifg=Black   guibg=Orange
+highlight PmenuSbar  ctermbg=3   guifg=#CCCCCC guibg=#CCCCCC
 highlight PmenuThumb cterm=reverse  gui=reverse guifg=Black   guibg=#AAAAAA
 
 " Misc {{{1

@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+#    Usage: get_epoch
+#        Print UNIX epoch.
+ 
+date_to_epoch='
+	0 + (1%H - 100)*3600
+		+ (1%M - 100)*60
+		+ (1%S - 100)
+		+ (0 + (%Y - 1600)*365
+				 + (%Y - 1600)/4
+				 - (%Y - 1600)/100
+				 + (%Y - 1600)/400
+				 + 1%j - 136140
+			)*86400'
+printf '%s\n' "$(( `TZ=GMT0 date +"$date_to_epoch"` ))"

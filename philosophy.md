@@ -6,9 +6,9 @@
 
 *	Automate whatever you can, starting with the most cognitively
 	tedious tasks that are done most frequently.  These may or may
-	not be the "slowest" tasks.  
+	not be the "slowest" tasks.
 
-*	Be mindful of composability of snippets: think about how your
+*	Aim for composability of snippets; think about how your
 	snippets will expand while you are in another snippet.
 
 *	Minimize nuisance navigation: design snippets that place you
@@ -24,5 +24,4 @@
 	best.
 
 *	Exploit vertical space for long equation groups, and tame
-	horizontal space.  Use folds to handle the long environments that
-	may result.
+	horizontal space.  Use folds to handle long environments.

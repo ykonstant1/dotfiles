@@ -1,0 +1,81 @@
+#!/bin/sh
+#
+# Usage: repeat TIMES COMMAND
+#     Repeat COMMAND a given number of TIMES.
+
+eval_full_quotes='
+	s/\\/\\\\/g  ;  s/\"/\\\"/g  ; s/</\\</g    ;  s/>/\\>/g  ;
+	s/\$/\\\$/g  ;  s/\[/\\\[/g  ; s/*/\\*/g    ;  s/?/\\?/g  ;
+	s/|/\\|/g    ;  s/&/\\&/g    ; s/~/\\~/g    ;  s/=/\\=/g  ;
+	s/;/\\;/g    ;  s/ /\\ /g    ; s/%/\\%/g    ;  s/`/\\`/g  ;
+	s/(/\\(/g    ;  s/)/\\)/g    ; s/{/\\{/g    ;  s/}/\\}/g  ;
+	s/#/\\#/g    ;  s/'"'"'/\\'"'"'/g'
+
+errorx() { printf 'Error: %s\n' "${*:-"unknown error."}" >&2; exit 1; }
+
+absolute_threshold=1000 # tunable
+
+if [ "${1}" -lt "${absolute_threshold}" ]; then
+_rep() {
+	rep_times="$((2 * $1))"
+	rep_string="$2"
+	output=""
+	while [ 0 -lt "${rep_times}" ]; do
+		test 1 -eq "$(((rep_times /= 2) % 2))" && output="${output}${rep_string}"
+		rep_string="${rep_string}${rep_string}"
+	done
+	printf '%s' "${output}"
+}
+else
+_rep() {
+awk -v t="$1" -v s="$2" '
+	BEGIN {
+		while (0 < t) {
+			r = t % 2
+			if (r == 1) o = o s
+			t = (t - r) / 2
+			s = s s
+		}
+		printf "%s", o
+	}'
+}
+fi
+
+{
+times="$1"
+shift
+
+test 0 -lt "${times}" || errorx "First argument must be a positive integer."
+test 0 -lt "$#"       || errorx "No command given to repeat."
+
+max_arg="${ARG_MAX:-"$(getconf ARG_MAX)"}"
+
+repeat_command="$*"
+command_length="${#repeat_command}"
+full_length="$((command_length + 2))" # count semicolon and space
+split_threshold="$((times * full_length))"
+
+# experimentally derived slacks to work around `eval` bugs; need tuning
+
+if [ "${max_arg}" -le "${split_threshold}" ]; then
+	: "$(( (slack_factor = 20                                              ) + \
+	       (arg_split    = slack_factor * full_length                      ) + \
+	       (block_size   = max_arg / arg_split                             ) + \
+	       (blocks       = times / block_size + 1                          ) + \
+	       (remainder    = (block_size + (times % block_size)) % block_size) ))"
+
+	eval_string="$(_rep "${block_size}" "${repeat_command}; " | sed -e "${eval_full_quotes}")"
+
+	while [ 0 -lt "$((blocks -= 1))" ]; do
+		eval eval "${eval_string}"
+	done
+
+	eval_string="$(_rep "${remainder}" "${repeat_command}; " | sed -e "${eval_full_quotes}")"
+	eval eval "${eval_string}"
+else
+	eval_string="$(_rep "${times}" "${repeat_command}; " | sed -e "${eval_full_quotes}")"
+	eval eval "${eval_string}"
+fi
+}
+
+exit
