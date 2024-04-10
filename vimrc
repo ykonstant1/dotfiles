@@ -4,8 +4,8 @@ syntax on
 " Activate filetype plugin
 filetype plugin on
 
-" ~/.vim/pack/vendor/start/{FastFold,fzf,fzf.vim,goyo.vim,limelight.vim,
-" traces.vim,ultisnips,vim-easy-align,vim-easymotion,vim-fugitive,vim-pencil,
+" ~/.vim/pack/vendor/start/{FastFold,fzf,fzf.vim,goyo.vim,limelight.vim,      \
+" traces.vim,ultisnips,vim-easy-align,vim-easymotion,vim-fugitive,vim-pencil, \
 " vim-sandwich,vimtex}
 "
 " ~/.vim/pack/vendor/opt/unicode.vim
